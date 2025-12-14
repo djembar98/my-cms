@@ -2,41 +2,28 @@
 
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
-import { useSyncExternalStore } from "react";
 
-function useIsClient() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
+function cx(...cls: (string | false | null | undefined)[]) {
+  return cls.filter(Boolean).join(" ");
 }
 
-export function ThemeToggle() {
-  const isClient = useIsClient();
-  const { resolvedTheme, setTheme } = useTheme();
-
-  if (!isClient || !resolvedTheme) return null;
-
-  const isDark = resolvedTheme === "dark";
+export function ThemeToggle({ className }: { className?: string }) {
+  const { setTheme } = useTheme();
 
   return (
     <button
       type="button"
       onClick={() => {
-        const next = isDark ? "light" : "dark";
-        setTheme(next);
-        console.log(
-          "theme ->",
-          next,
-          "html.class:",
-          document.documentElement.className
-        );
+        const isDark = document.documentElement.classList.contains("dark");
+        setTheme(isDark ? "light" : "dark");
       }}
-      className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
+      className={cx("btn btn-ghost", className)}
+      aria-label="Toggle theme"
+      title="Toggle theme"
     >
-      {isDark ? <Sun size={16} /> : <Moon size={16} />}
-      <span className="hidden sm:inline">{isDark ? "Light" : "Dark"}</span>
+      <Sun className="h-4 w-4 hidden dark:block" />
+      <Moon className="h-4 w-4 block dark:hidden" />
+      <span className="hidden sm:inline">Theme</span>
     </button>
   );
 }

@@ -1,24 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import {
+  ArrowRight,
+  Boxes,
+  FileText,
+  Plus,
+  Settings,
+  TrendingUp,
+} from "lucide-react";
+
+function cx(...cls: (string | false | null | undefined)[]) {
+  return cls.filter(Boolean).join(" ");
+}
 
 type ProductRow = {
   id: string;
   name: string;
-  type: "sharing" | "private";
+  type: string;
   image_url: string | null;
   wa_number: string;
-};
-
-type OfferRow = {
-  id: string;
-  product_id: string;
-  label: string;
-  unit: string;
-  qty: number;
-  price: number;
+  created_at: string;
 };
 
 type PostRow = {
@@ -30,140 +34,128 @@ type PostRow = {
   created_at: string;
 };
 
-function formatRupiah(n: number) {
-  return new Intl.NumberFormat("id-ID", {
-    style: "currency",
-    currency: "IDR",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
+function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "success" | "warn";
+}) {
+  const toneCls =
+    tone === "success"
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200"
+      : tone === "warn"
+      ? "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-200"
+      : "border-slate-200/70 bg-white/60 text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200";
 
-function unitLabel(unit: string, qty: number) {
-  if (unit === "month") return `${qty} bulan`;
-  if (unit === "year") return `${qty} tahun`;
-  if (unit === "day") return `${qty} hari`;
-  return `${qty} ${unit}`;
-}
-
-function buildWaLink(waNumber: string, message: string) {
-  const wa = waNumber.replace(/\D/g, "");
-  return `https://wa.me/${wa}?text=${encodeURIComponent(message)}`;
-}
-
-export default function HomePage() {
-  const supabase = createSupabaseBrowserClient();
-
-  const [loading, setLoading] = useState(true);
-
-  const [products, setProducts] = useState<ProductRow[]>([]);
-  const [offers, setOffers] = useState<Record<string, OfferRow[]>>({});
-  const [selectedOffer, setSelectedOffer] = useState<Record<string, string>>(
-    {}
+  return (
+    <span
+      className={cx(
+        "inline-flex items-center rounded-2xl border px-2.5 py-1 text-[11px] font-medium",
+        "backdrop-blur-md",
+        toneCls
+      )}
+    >
+      {children}
+    </span>
   );
+}
 
+function GlassCard({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cx(
+        "rounded-3xl border border-white/20 bg-white/50 backdrop-blur-xl",
+        "shadow-[0_20px_60px_-25px_rgba(2,6,23,0.18)]",
+        "dark:border-white/10 dark:bg-white/5",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SoftButton({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cx(
+        "group inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition",
+        "border-slate-200/70 bg-white/60 hover:bg-white/80",
+        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+        className
+      )}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function PrimaryButton({
+  href,
+  children,
+  className,
+}: {
+  href: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cx(
+        "group inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-sm font-semibold transition",
+        "text-white",
+        "bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(56,189,248,0.95))] hover:brightness-[1.03]",
+        "shadow-[0_12px_30px_-15px_rgba(99,102,241,0.55)]",
+        className
+      )}
+    >
+      {children}
+      <ArrowRight className="h-4 w-4 opacity-85 transition group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
+export default function DashboardHomePage() {
+  const supabase = createSupabaseBrowserClient();
+  const [products, setProducts] = useState<ProductRow[]>([]);
   const [posts, setPosts] = useState<PostRow[]>([]);
-  const [totalPosts, setTotalPosts] = useState(0);
-  const [totalProducts, setTotalProducts] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
 
-    const {
-      data: p,
-      count: productCount,
-      error: pErr,
-    } = await supabase
+    const { data: p } = await supabase
       .from("products")
-      .select("id,name,type,image_url,wa_number", { count: "exact" })
-      .order("created_at", { ascending: false });
-
-    if (pErr) {
-      alert(pErr.message);
-      setLoading(false);
-      return;
-    }
-
-    const prod = (p ?? []) as ProductRow[];
-    setProducts(prod);
-    setTotalProducts(productCount ?? 0);
-
-    const ids = prod.map((x) => x.id);
-    if (ids.length > 0) {
-      const { data: o, error: oErr } = await supabase
-        .from("product_offers")
-        .select("id,product_id,label,unit,qty,price")
-        .in("product_id", ids)
-        .order("created_at", { ascending: true });
-
-      if (oErr) {
-        alert(oErr.message);
-      } else {
-        const grouped: Record<string, OfferRow[]> = {};
-        (o ?? []).forEach((row) => {
-          const r = row as OfferRow;
-          grouped[r.product_id] ||= [];
-          grouped[r.product_id].push(r);
-        });
-        setOffers(grouped);
-
-        const defaults: Record<string, string> = {};
-        Object.entries(grouped).forEach(([pid, list]) => {
-          if (list[0]) defaults[pid] = list[0].id;
-        });
-        setSelectedOffer(defaults);
-      }
-    } else {
-      setOffers({});
-    }
-
-    const { data: postRows, error: postErr } = await supabase
-      .from("posts")
-      .select("id,title,slug,published,cover_url,created_at", {
-        count: "exact",
-      })
+      .select("id,name,type,image_url,wa_number,created_at")
       .order("created_at", { ascending: false })
       .limit(6);
 
-    if (postErr) {
-      alert(postErr.message);
-      setPosts([]);
-      setTotalPosts(0);
-    } else {
-      setPosts((postRows ?? []) as PostRow[]);
-      setTotalPosts((postRows ?? []).length);
-    }
+    const { data: t } = await supabase
+      .from("posts")
+      .select("id,title,slug,published,cover_url,created_at")
+      .order("created_at", { ascending: false })
+      .limit(6);
 
+    setProducts((p ?? []) as ProductRow[]);
+    setPosts((t ?? []) as PostRow[]);
     setLoading(false);
-  }
-
-  async function trackClick(productId: string, offerId: string) {
-    await supabase.from("order_clicks").insert({
-      product_id: productId,
-      offer_id: offerId,
-    });
-  }
-
-  function onOrder(p: ProductRow) {
-    const list = offers[p.id] ?? [];
-    const chosenId = selectedOffer[p.id];
-    const chosen = list.find((x) => x.id === chosenId) ?? list[0];
-    if (!chosen)
-      return alert("Paket belum ada. Tambahkan paket dulu di menu Jualan.");
-
-    const msg = [
-      `Halo admin, mau order ya 😊`,
-      ``,
-      `Produk: ${p.name}`,
-      `Tipe: ${p.type.toUpperCase()}`,
-      `Paket: ${chosen.label}`,
-      `Durasi/Qty: ${unitLabel(chosen.unit, chosen.qty)}`,
-      `Harga: ${formatRupiah(chosen.price)}`,
-      ``,
-      `Jangan lupa tanyakan stock dulu, yaa!♡♡`,
-    ].join("\n");
-
-    trackClick(p.id, chosen.id).catch(() => {});
-    window.open(buildWaLink(p.wa_number, msg), "_blank");
   }
 
   useEffect(() => {
@@ -172,200 +164,268 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-2xl border bg-white p-5 dark:bg-neutral-950">
-        <div className="text-lg font-semibold">Dashboard</div>
-        <div className="text-sm text-black/60 dark:text-white/60">
-          Ringkasan jualan & konten
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border bg-white p-4 dark:bg-neutral-950">
-          <div className="text-xs text-black/60 dark:text-white/60">
-            Total Produk
-          </div>
-          <div className="text-2xl font-semibold">{totalProducts}</div>
-        </div>
-        <div className="rounded-2xl border bg-white p-4 dark:bg-neutral-950">
-          <div className="text-xs text-black/60 dark:text-white/60">
-            Total Post
-          </div>
-          <div className="text-2xl font-semibold">{totalPosts}</div>
-        </div>
-        <div className="rounded-2xl border bg-white p-4 dark:bg-neutral-950">
-          <div className="text-xs text-black/60 dark:text-white/60">Status</div>
-          <div className="text-sm font-medium">OK</div>
-          <div className="text-xs text-black/60 dark:text-white/60">
-            (nanti kita isi disk usage + warning)
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-sm text-black/60 dark:text-white/60">
-          Loading...
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-base font-semibold">Jualan</div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Pilih paket lalu order via WhatsApp
+    <main
+      className={cx(
+        "min-h-[calc(100vh-0px)] w-full",
+        "text-slate-900 dark:text-slate-100",
+        "bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(1000px_circle_at_80%_20%,rgba(99,102,241,0.12),transparent_55%),radial-gradient(900px_circle_at_70%_80%,rgba(16,185,129,0.08),transparent_55%)]",
+        "bg-slate-50",
+        "dark:bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(1000px_circle_at_80%_20%,rgba(99,102,241,0.10),transparent_55%),radial-gradient(900px_circle_at_70%_80%,rgba(16,185,129,0.07),transparent_55%)]",
+        "dark:bg-[#0b1020]"
+      )}
+    >
+      <div className="mx-auto w-full max-w-6xl space-y-6 p-4 sm:p-6">
+        <GlassCard className="p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2">
+                <div className="grid h-9 w-9 place-items-center rounded-2xl border border-white/30 bg-white/40 dark:border-white/10 dark:bg-white/5">
+                  <TrendingUp className="h-4 w-4 opacity-80" />
+                </div>
+                <div className="text-lg font-semibold tracking-tight">
+                  Dashboard
+                </div>
+              </div>
+              <div className="text-sm text-slate-600/80 dark:text-slate-300/70">
+                Ringkas, fokus, dan rapi — prioritas jualan.
               </div>
             </div>
-            <Link
-              href="/dashboard/jualan"
-              className="rounded-lg border px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
-            >
-              Kelola Jualan →
-            </Link>
-          </div>
 
-          {products.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-5 dark:bg-neutral-950">
-              <div className="font-semibold">Belum ada produk</div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Tambahkan produk di menu <b>Jualan</b>.
+            <PrimaryButton href="/dashboard/jualan">
+              Kelola Jualan
+            </PrimaryButton>
+          </div>
+        </GlassCard>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <GlassCard className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
+                  Products
+                </div>
+                <div className="mt-1 text-2xl font-semibold tracking-tight">
+                  {loading ? "…" : products.length}
+                </div>
+                <div className="mt-1 text-xs text-slate-600/70 dark:text-slate-300/60">
+                  Terbaru ditampilkan
+                </div>
+              </div>
+              <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/30 bg-white/40 dark:border-white/10 dark:bg-white/5">
+                <Boxes className="h-4 w-4 opacity-80" />
               </div>
             </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {products.slice(0, 6).map((p) => {
-                const list = offers[p.id] ?? [];
-                const selected = selectedOffer[p.id] ?? list[0]?.id ?? "";
+          </GlassCard>
+
+          <GlassCard className="p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
+                  Posts
+                </div>
+                <div className="mt-1 text-2xl font-semibold tracking-tight">
+                  {loading ? "…" : posts.length}
+                </div>
+                <div className="mt-1 text-xs text-slate-600/70 dark:text-slate-300/60">
+                  Terbaru ditampilkan
+                </div>
+              </div>
+              <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/30 bg-white/40 dark:border-white/10 dark:bg-white/5">
+                <FileText className="h-4 w-4 opacity-80" />
+              </div>
+            </div>
+          </GlassCard>
+
+          <GlassCard className="p-5 sm:col-span-2">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
+                  Quick
+                </div>
+                <div className="mt-1 text-sm text-slate-600/80 dark:text-slate-300/70">
+                  Aksi cepat untuk kerja harian.
+                </div>
+              </div>
+              <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/30 bg-white/40 dark:border-white/10 dark:bg-white/5">
+                <Plus className="h-4 w-4 opacity-80" />
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <SoftButton href="/dashboard/jualan">
+                <Plus className="h-4 w-4 opacity-80" />
+                Tambah produk
+              </SoftButton>
+              <SoftButton href="/dashboard/post">
+                <Plus className="h-4 w-4 opacity-80" />
+                Buat post
+              </SoftButton>
+              <SoftButton href="/dashboard/static">
+                <TrendingUp className="h-4 w-4 opacity-80" />
+                Lihat statistik
+              </SoftButton>
+              <SoftButton href="/dashboard/settings">
+                <Settings className="h-4 w-4 opacity-80" />
+                Settings
+              </SoftButton>
+            </div>
+          </GlassCard>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <GlassCard className="p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="font-semibold tracking-tight">
+                  Jualan Terbaru
+                </div>
+                <div className="text-sm text-slate-600/80 dark:text-slate-300/70">
+                  Klik untuk detail & paket harga
+                </div>
+              </div>
+
+              <Link
+                href="/dashboard/jualan"
+                className={cx(
+                  "rounded-2xl px-3 py-2 text-sm font-medium transition",
+                  "text-slate-600 hover:text-slate-900 hover:bg-white/60",
+                  "dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/5"
+                )}
+              >
+                Lihat semua
+              </Link>
+            </div>
+
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {(loading ? Array.from({ length: 6 }) : products).map((p, idx) => {
+                const key = loading ? `skp-${idx}` : (p as ProductRow).id;
+                const item = p as ProductRow;
 
                 return (
-                  <div
-                    key={p.id}
-                    className="rounded-2xl border bg-white p-4 dark:bg-neutral-950"
-                  >
-                    {p.image_url ? (
-                      <img
-                        src={p.image_url}
-                        alt={p.name}
-                        className="h-40 w-full rounded-xl border object-cover"
-                      />
-                    ) : (
-                      <div className="h-40 w-full rounded-xl border grid place-items-center text-sm text-black/60 dark:text-white/60">
-                        No image
-                      </div>
+                  <Link
+                    key={key}
+                    href={loading ? "#" : `/dashboard/jualan/${item.id}`}
+                    className={cx(
+                      "group rounded-3xl border p-4 transition",
+                      "border-white/20 bg-white/40 hover:bg-white/60",
+                      "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+                      loading && "pointer-events-none"
                     )}
+                  >
+                    <div className="flex items-start gap-3">
+                      {loading ? (
+                        <div className="h-12 w-12 rounded-2xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                      ) : item.image_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.image_url}
+                          className="h-12 w-12 rounded-2xl border border-white/20 object-cover dark:border-white/10"
+                          alt={item.name}
+                        />
+                      ) : (
+                        <div className="h-12 w-12 rounded-2xl border border-white/20 bg-white/30 dark:border-white/10 dark:bg-white/5" />
+                      )}
 
-                    <div className="mt-3">
-                      <div className="font-semibold">{p.name}</div>
-                      <div className="text-xs text-black/60 dark:text-white/60">
-                        {p.type.toUpperCase()}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">
+                          {loading ? (
+                            <div className="h-4 w-3/4 rounded bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                          ) : (
+                            item.name
+                          )}
+                        </div>
+
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {loading ? (
+                            <>
+                              <div className="h-5 w-20 rounded-2xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                              <div className="h-5 w-24 rounded-2xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                            </>
+                          ) : (
+                            <>
+                              <Pill>{item.type}</Pill>
+                              <Pill>WA: {item.wa_number}</Pill>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-
-                    <div className="mt-3 space-y-2">
-                      <select
-                        className="w-full rounded-xl border p-3 bg-white text-black dark:bg-neutral-950 dark:text-white"
-                        value={selected}
-                        onChange={(e) =>
-                          setSelectedOffer((prev) => ({
-                            ...prev,
-                            [p.id]: e.target.value,
-                          }))
-                        }
-                        disabled={list.length === 0}
-                      >
-                        {list.length === 0 ? (
-                          <option value="">Belum ada paket</option>
-                        ) : (
-                          list.map((o) => (
-                            <option key={o.id} value={o.id}>
-                              {o.label} • {unitLabel(o.unit, o.qty)} •{" "}
-                              {formatRupiah(o.price)}
-                            </option>
-                          ))
-                        )}
-                      </select>
-
-                      <button
-                        onClick={() => onOrder(p)}
-                        disabled={list.length === 0}
-                        className="w-full rounded-xl bg-black p-3 text-white disabled:opacity-60 dark:bg-white dark:text-black"
-                      >
-                        Order WA
-                      </button>
-                    </div>
-                  </div>
+                  </Link>
                 );
               })}
             </div>
-          )}
+          </GlassCard>
 
-          <div className="flex items-center justify-between pt-2">
-            <div>
-              <div className="text-base font-semibold">Post Terbaru</div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Kelola konten blog
-              </div>
-            </div>
-            <Link
-              href="/dashboard/post"
-              className="rounded-lg border px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
-            >
-              Kelola Post →
-            </Link>
-          </div>
-
-          {posts.length === 0 ? (
-            <div className="rounded-2xl border bg-white p-5 dark:bg-neutral-950">
-              <div className="font-semibold">Belum ada post</div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Buat post di menu <b>Post</b>.
-              </div>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {posts.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-2xl border bg-white p-4 dark:bg-neutral-950"
-                >
-                  {p.cover_url ? (
-                    <img
-                      src={p.cover_url}
-                      alt={p.title}
-                      className="h-40 w-full rounded-xl border object-cover"
-                    />
-                  ) : (
-                    <div className="h-40 w-full rounded-xl border grid place-items-center text-sm text-black/60 dark:text-white/60">
-                      No cover
-                    </div>
-                  )}
-
-                  <div className="mt-3">
-                    <div className="font-semibold line-clamp-2">{p.title}</div>
-                    <div className="text-xs text-black/60 dark:text-white/60">
-                      /{p.slug} • {p.published ? "Published" : "Draft"}
-                    </div>
-                  </div>
-
-                  <div className="mt-3 flex gap-2">
-                    <Link
-                      href={`/dashboard/post`}
-                      className="flex-1 rounded-lg border px-3 py-2 text-sm text-center hover:bg-black/5 dark:hover:bg-white/10"
-                    >
-                      View
-                    </Link>
-                    <Link
-                      href={`/dashboard/post`}
-                      className="flex-1 rounded-lg bg-black px-3 py-2 text-sm text-white text-center dark:bg-white dark:text-black"
-                    >
-                      Edit
-                    </Link>
-                  </div>
+          <GlassCard className="p-5 sm:p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="font-semibold tracking-tight">Post Terbaru</div>
+                <div className="text-sm text-slate-600/80 dark:text-slate-300/70">
+                  Draft / Published
                 </div>
-              ))}
+              </div>
+
+              <Link
+                href="/dashboard/post"
+                className={cx(
+                  "rounded-2xl px-3 py-2 text-sm font-medium transition",
+                  "text-slate-600 hover:text-slate-900 hover:bg-white/60",
+                  "dark:text-slate-300 dark:hover:text-white dark:hover:bg-white/5"
+                )}
+              >
+                Lihat semua
+              </Link>
             </div>
-          )}
-        </>
-      )}
-    </div>
+
+            <div className="mt-4 grid gap-3">
+              {(loading ? Array.from({ length: 6 }) : posts).map((x, idx) => {
+                const key = loading ? `skt-${idx}` : (x as PostRow).id;
+                const item = x as PostRow;
+
+                return (
+                  <Link
+                    key={key}
+                    href={loading ? "#" : `/dashboard/post/${item.id}`}
+                    className={cx(
+                      "group rounded-3xl border p-4 transition",
+                      "border-white/20 bg-white/40 hover:bg-white/60",
+                      "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+                      loading && "pointer-events-none"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">
+                          {loading ? (
+                            <div className="h-4 w-64 max-w-[70%] rounded bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                          ) : (
+                            item.title
+                          )}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-600/70 dark:text-slate-300/60 truncate">
+                          {loading ? (
+                            <div className="h-3 w-40 rounded bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                          ) : (
+                            `/${item.slug}`
+                          )}
+                        </div>
+                      </div>
+
+                      {loading ? (
+                        <div className="h-5 w-20 rounded-2xl bg-slate-200/70 dark:bg-white/10 animate-pulse" />
+                      ) : (
+                        <Pill tone={item.published ? "success" : "warn"}>
+                          {item.published ? "Published" : "Draft"}
+                        </Pill>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </GlassCard>
+        </div>
+      </div>
+    </main>
   );
 }

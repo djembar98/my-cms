@@ -1,5 +1,63 @@
 @import "tailwindcss";
-@config "../../tailwind.config.ts";
+
+
+:root {
+  --bg: 247 248 251;
+  --surface: 255 255 255;
+  --surface2: 242 244 248;
+  --fg: 11 18 32;
+  --muted: 100 116 139;
+  --border: 148 163 184;
+
+  --accent: 99 102 241;
+  --accent2: 99 102 241 / 0.14;
+
+  --ring: 99 102 241 / 0.35;
+}
+
+.dark {
+  --bg: 11 16 32;
+  --surface: 15 22 38;
+  --surface2: 18 28 49;
+  --fg: 226 232 240;
+  --muted: 148 163 184;
+  --border: 226 232 240 / 0.14;
+
+  --ring: 56 189 248 / 0.35;
+}
+
+:root[data-accent="sky"] {
+  --accent: 56 189 248;
+  --accent2: 56 189 248 / 0.14;
+  --ring: 56 189 248 / 0.35;
+}
+:root[data-accent="violet"] {
+  --accent: 139 92 246;
+  --accent2: 139 92 246 / 0.14;
+  --ring: 167 139 250 / 0.35;
+}
+:root[data-accent="emerald"] {
+  --accent: 16 185 129;
+  --accent2: 16 185 129 / 0.14;
+  --ring: 52 211 153 / 0.35;
+}
+:root[data-accent="rose"] {
+  --accent: 244 63 94;
+  --accent2: 244 63 94 / 0.14;
+  --ring: 251 113 133 / 0.35;
+}
+
+
+@theme {
+  --color-bg: rgb(var(--bg));
+  --color-surface: rgb(var(--surface));
+  --color-surface2: rgb(var(--surface2));
+  --color-fg: rgb(var(--fg));
+  --color-muted: rgb(var(--muted));
+  --color-border: rgb(var(--border));
+  --color-accent: rgb(var(--accent));
+  --color-accent2: rgb(var(--accent2));
+}
 
 html,
 body {
@@ -7,5 +65,54 @@ body {
 }
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  @apply bg-bg text-fg antialiased;
+}
+
+:where(a, button, input, textarea, select):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 4px rgb(var(--ring));
+  border-radius: 16px;
+}
+
+@layer components {
+  .muted {
+    @apply text-muted;
+  }
+
+  .card {
+    @apply rounded-3xl border border-border/30 bg-surface/70 backdrop-blur-xl;
+    box-shadow:
+      0 20px 60px -30px rgba(2, 6, 23, 0.35),
+      0 6px 18px -12px rgba(2, 6, 23, 0.25);
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium transition;
+  }
+
+  .btn-ghost {
+    @apply border-border/30 bg-transparent hover:bg-accent2;
+  }
+
+  .btn-soft {
+    @apply border-border/30 bg-surface/50 hover:bg-surface/70;
+  }
+
+  .btn-primary {
+    @apply border-transparent text-white;
+    background: rgb(var(--accent));
+  }
+
+  .input {
+    @apply w-full rounded-2xl border border-border/30 bg-surface/60 px-4 py-3 text-sm outline-none transition;
+  }
+
+  .input:focus {
+    border-color: rgb(var(--accent) / 0.55);
+    box-shadow: 0 0 0 4px rgb(var(--ring));
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full border border-border/30 bg-surface/60 px-2.5 py-1 text-[11px] font-medium;
+  }
 }

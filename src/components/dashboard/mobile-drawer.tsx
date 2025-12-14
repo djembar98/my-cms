@@ -1,6 +1,10 @@
 "use client";
 
-import { SidebarNav } from "@/components/dashboard/sidebar-nav";
+import { SidebarNav } from "./sidebar-nav";
+
+function cx(...cls: (string | false | null | undefined)[]) {
+  return cls.filter(Boolean).join(" ");
+}
 
 export function MobileDrawer({
   open,
@@ -12,20 +16,24 @@ export function MobileDrawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-30 md:hidden">
+      {/* Backdrop */}
       <button
-        className="absolute inset-0 bg-black/40"
         onClick={onClose}
-        aria-label="Close sidebar backdrop"
+        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[1px] dark:bg-black/50"
+        aria-label="Close"
+        type="button"
       />
-      <div className="absolute left-0 top-0 h-full w-72 bg-white dark:bg-neutral-950 border-r p-4">
-        <div className="mb-4">
-          <div className="text-lg font-semibold">MyCMS</div>
-          <div className="text-xs text-black/60 dark:text-white/60">
-            Admin Dashboard
-          </div>
-        </div>
 
+      {/* Panel */}
+      <div
+        className={cx(
+          "absolute inset-y-0 left-0 w-[290px] overflow-hidden",
+          "border-r border-white/20 bg-white/45 backdrop-blur-xl",
+          "shadow-[0_20px_60px_-25px_rgba(2,6,23,0.45)]",
+          "dark:border-white/10 dark:bg-white/5"
+        )}
+      >
         <SidebarNav onNavigate={onClose} />
       </div>
     </div>

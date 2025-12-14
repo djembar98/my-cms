@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
-  Box,
+  Boxes,
   FileText,
   MousePointerClick,
   HardDrive,
@@ -17,6 +17,10 @@ type TopClicked = {
   name: string;
   clicks: number;
 };
+
+function cx(...cls: (string | false | null | undefined)[]) {
+  return cls.filter(Boolean).join(" ");
+}
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
@@ -32,10 +36,124 @@ function formatBytes(bytes: number) {
   return `${bytes} B`;
 }
 
+/* ---------- shared style (konsisten login/dashboard) ---------- */
+
+const subtleText = "text-slate-600/80 dark:text-slate-300/70";
+
+function GlassCard({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={cx(
+        "rounded-3xl border border-white/20 bg-white/50 backdrop-blur-xl",
+        "shadow-[0_20px_60px_-25px_rgba(2,6,23,0.18)]",
+        "dark:border-white/10 dark:bg-white/5",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SoftButton({
+  onClick,
+  children,
+  className,
+  disabled,
+}: {
+  onClick?: () => void;
+  children: React.ReactNode;
+  className?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={cx(
+        "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition",
+        "border-slate-200/70 bg-white/60 hover:bg-white/80",
+        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+        "disabled:opacity-60 disabled:pointer-events-none",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StatCard({
+  href,
+  label,
+  value,
+  icon,
+}: {
+  href: string;
+  label: string;
+  value: React.ReactNode;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cx(
+        "group rounded-3xl border p-5 transition",
+        "border-white/20 bg-white/50 hover:bg-white/70",
+        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className={cx("text-xs", subtleText)}>{label}</div>
+          <div className="mt-1 text-2xl font-semibold tracking-tight">
+            {value}
+          </div>
+        </div>
+        <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/30 bg-white/40 dark:border-white/10 dark:bg-white/5">
+          {icon}
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function Bar({
+  percent,
+  state,
+}: {
+  percent: number;
+  state: "ok" | "warning" | "critical";
+}) {
+  return (
+    <div className="h-3 w-full overflow-hidden rounded-full border border-white/20 bg-white/30 dark:border-white/10 dark:bg-white/5">
+      <div
+        className={cx(
+          "h-full rounded-full transition-all",
+          state === "critical"
+            ? "bg-rose-500"
+            : state === "warning"
+            ? "bg-amber-500"
+            : "bg-emerald-500"
+        )}
+        style={{ width: `${percent}%` }}
+      />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------- */
+
 export default function StaticPage() {
   const supabase = createSupabaseBrowserClient();
 
-  // === 2GB max (sesuai request kamu) ===
+  // 2GB max
   const MAX_BYTES = 2 * 1024 * 1024 * 1024;
 
   const [loading, setLoading] = useState(true);
@@ -64,20 +182,17 @@ export default function StaticPage() {
     setLoading(true);
     setDiskErr(null);
 
-    // 1) COUNTS (lebih cepat pakai head:true)
     const [postsRes, productsRes, clicksRes] = await Promise.all([
       supabase.from("posts").select("id", { count: "exact", head: true }),
       supabase.from("products").select("id", { count: "exact", head: true }),
-      supabase
-        .from("order_clicks")
-        .select("id", { count: "exact", head: true }),
+      supabase.from("order_clicks").select("id", { count: "exact", head: true }),
     ]);
 
     if (!postsRes.error) setTotalPosts(postsRes.count ?? 0);
     if (!productsRes.error) setTotalProducts(productsRes.count ?? 0);
     if (!clicksRes.error) setTotalOrderClicks(clicksRes.count ?? 0);
 
-    // 2) CLOUDINARY USAGE (via API route server-side)
+    // Cloudinary usage
     try {
       const r = await fetch("/api/cloudinary/usage", { cache: "no-store" });
       if (!r.ok) throw new Error(`Cloudinary usage error: ${r.status}`);
@@ -96,13 +211,10 @@ export default function StaticPage() {
       setDiskBytes(0);
     }
 
-    // 3) TOP CLICKED PRODUCTS (7 hari terakhir)
+    // Top clicked products (7 hari)
     try {
-      const since = new Date(
-        Date.now() - 7 * 24 * 60 * 60 * 1000
-      ).toISOString();
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-      // ambil click rows (7 hari)
       const { data: clickRows, error: clickErr } = await supabase
         .from("order_clicks")
         .select("product_id,created_at")
@@ -167,178 +279,146 @@ export default function StaticPage() {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl border bg-white p-5 dark:bg-neutral-950">
-        <div className="text-lg font-semibold">Static</div>
-        <div className="text-sm text-black/60 dark:text-white/60">
-          Ringkasan performa: total post, total produk, klik order, dan disk
-          usage (Cloudinary).
+      {/* Header */}
+      <GlassCard className="p-5 sm:p-6">
+        <div className="text-lg font-semibold tracking-tight">Static</div>
+        <div className={cx("mt-1 text-sm", subtleText)}>
+          Ringkasan performa: total post, total produk, klik order, dan disk usage
+          (Cloudinary).
         </div>
-      </div>
+      </GlassCard>
 
       {/* KPI */}
       <div className="grid gap-4 md:grid-cols-3">
-        <Link
+        <StatCard
           href="/dashboard/post"
-          className="rounded-2xl border bg-white p-5 hover:bg-black/5 dark:bg-neutral-950 dark:hover:bg-white/10 transition"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Total Posts
-              </div>
-              <div className="text-2xl font-semibold">{totalPosts}</div>
-            </div>
-            <div className="h-10 w-10 rounded-xl border flex items-center justify-center">
-              <FileText size={18} />
-            </div>
-          </div>
-        </Link>
-
-        <Link
+          label="Total Posts"
+          value={totalPosts}
+          icon={<FileText className="h-4 w-4 opacity-80" />}
+        />
+        <StatCard
           href="/dashboard/jualan"
-          className="rounded-2xl border bg-white p-5 hover:bg-black/5 dark:bg-neutral-950 dark:hover:bg-white/10 transition"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Total Produk
-              </div>
-              <div className="text-2xl font-semibold">{totalProducts}</div>
-            </div>
-            <div className="h-10 w-10 rounded-xl border flex items-center justify-center">
-              <Box size={18} />
-            </div>
-          </div>
-        </Link>
-
-        <Link
+          label="Total Produk"
+          value={totalProducts}
+          icon={<Boxes className="h-4 w-4 opacity-80" />}
+        />
+        <StatCard
           href="/dashboard/jualan"
-          className="rounded-2xl border bg-white p-5 hover:bg-black/5 dark:bg-neutral-950 dark:hover:bg-white/10 transition"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Klik Order
-              </div>
-              <div className="text-2xl font-semibold">{totalOrderClicks}</div>
-            </div>
-            <div className="h-10 w-10 rounded-xl border flex items-center justify-center">
-              <MousePointerClick size={18} />
-            </div>
-          </div>
-        </Link>
+          label="Klik Order"
+          value={totalOrderClicks}
+          icon={<MousePointerClick className="h-4 w-4 opacity-80" />}
+        />
       </div>
 
       {/* Disk usage */}
-      <div className="rounded-2xl border bg-white p-5 dark:bg-neutral-950">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <div className="h-10 w-10 rounded-xl border flex items-center justify-center">
-              <HardDrive size={18} />
+      <GlassCard className="p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/30 bg-white/40 dark:border-white/10 dark:bg-white/5">
+              <HardDrive className="h-4 w-4 opacity-80" />
             </div>
+
             <div>
-              <div className="font-semibold">Disk Usage (Cloudinary)</div>
-              <div className="text-sm text-black/60 dark:text-white/60">
-                Maksimum ditampilkan: <b>2 GB</b>
+              <div className="font-semibold tracking-tight">Disk Usage (Cloudinary)</div>
+              <div className={cx("text-sm", subtleText)}>
+                Maksimum ditampilkan: <span className="font-semibold">2 GB</span>
               </div>
             </div>
           </div>
 
-          <button
-            onClick={loadAll}
-            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm hover:bg-black/5 dark:hover:bg-white/10"
-          >
-            <RefreshCw size={16} />
+          <SoftButton onClick={loadAll} disabled={loading}>
+            <RefreshCw className="h-4 w-4" />
             Refresh
-          </button>
+          </SoftButton>
         </div>
 
         <div className="mt-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <div className="text-black/60 dark:text-white/60">
-              Terpakai: <b>{formatBytes(diskBytes)}</b> /{" "}
-              <b>{formatBytes(MAX_BYTES)}</b>
+            <div className={subtleText}>
+              Terpakai: <span className="font-semibold">{formatBytes(diskBytes)}</span>{" "}
+              / <span className="font-semibold">{formatBytes(MAX_BYTES)}</span>
             </div>
             <div className="font-medium">{diskPercent.toFixed(0)}%</div>
           </div>
 
-          <div className="h-3 w-full rounded-full border bg-black/5 dark:bg-white/10 overflow-hidden">
-            <div
-              className={[
-                "h-full rounded-full transition-all",
-                diskState === "critical"
-                  ? "bg-red-500"
-                  : diskState === "warning"
-                  ? "bg-yellow-500"
-                  : "bg-emerald-500",
-              ].join(" ")}
-              style={{ width: `${diskPercent}%` }}
-            />
-          </div>
+          <Bar percent={diskPercent} state={diskState} />
 
           {diskState !== "ok" && (
-            <div className="mt-2 flex items-start gap-2 rounded-xl border p-3 text-sm">
-              <AlertTriangle size={18} className="mt-0.5" />
+            <div
+              className={cx(
+                "mt-3 flex items-start gap-2 rounded-2xl border p-3 text-sm",
+                "border-white/20 bg-white/40",
+                "dark:border-white/10 dark:bg-white/5"
+              )}
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 opacity-80" />
               <div>
                 <div className="font-medium">
-                  {diskState === "critical"
-                    ? "Disk hampir penuh"
-                    : "Disk mulai penuh"}
+                  {diskState === "critical" ? "Disk hampir penuh" : "Disk mulai penuh"}
                 </div>
-                <div className="text-black/60 dark:text-white/60">
-                  Kurangi upload / hapus asset yang tidak dipakai supaya tetap
-                  lancar.
+                <div className={cx("mt-0.5", subtleText)}>
+                  Kurangi upload / hapus asset yang tidak dipakai supaya tetap lancar.
                 </div>
               </div>
             </div>
           )}
 
           {diskErr && (
-            <div className="text-sm text-red-500">Error: {diskErr}</div>
+            <div className="text-sm text-rose-600 dark:text-rose-300">
+              Error: {diskErr}
+            </div>
           )}
         </div>
-      </div>
+      </GlassCard>
 
       {/* Top clicked */}
-      <div className="rounded-2xl border bg-white p-5 dark:bg-neutral-950">
-        <div className="font-semibold">
+      <GlassCard className="p-5 sm:p-6">
+        <div className="font-semibold tracking-tight">
           Top Produk Paling Sering Diklik (7 hari)
         </div>
-        <div className="text-sm text-black/60 dark:text-white/60">
-          Berdasarkan tabel <code>order_clicks</code>.
+        <div className={cx("text-sm", subtleText)}>
+          Berdasarkan tabel <code className="rounded bg-white/40 px-1 py-0.5 text-[12px] dark:bg-white/10">
+            order_clicks
+          </code>
+          .
         </div>
 
         {loading ? (
-          <div className="mt-3 text-sm text-black/60 dark:text-white/60">
-            Loading...
-          </div>
+          <div className={cx("mt-3 text-sm", subtleText)}>Loading...</div>
         ) : topClicked.length === 0 ? (
-          <div className="mt-3 text-sm text-black/60 dark:text-white/60">
+          <div className={cx("mt-3 text-sm", subtleText)}>
             Belum ada klik order dalam 7 hari terakhir.
           </div>
         ) : (
           <div className="mt-4 space-y-3">
             {topClicked.map((x) => {
               const pct = (x.clicks / maxClicks) * 100;
+
               return (
-                <div key={x.productId} className="rounded-xl border p-3">
+                <div
+                  key={x.productId}
+                  className={cx(
+                    "rounded-3xl border p-4 transition",
+                    "border-white/20 bg-white/40 hover:bg-white/60",
+                    "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                  )}
+                >
                   <div className="flex items-center justify-between gap-3">
-                    <div className="font-medium">{x.name}</div>
-                    <div className="text-sm text-black/60 dark:text-white/60">
-                      {x.clicks} klik
-                    </div>
+                    <div className="font-medium truncate">{x.name}</div>
+                    <div className={cx("text-sm", subtleText)}>{x.clicks} klik</div>
                   </div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-black/5 dark:bg-white/10 overflow-hidden">
+
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full border border-white/20 bg-white/30 dark:border-white/10 dark:bg-white/5">
                     <div
-                      className="h-full rounded-full bg-black dark:bg-white"
+                      className="h-full rounded-full bg-slate-900/70 dark:bg-white/70"
                       style={{ width: `${pct}%` }}
                     />
                   </div>
 
-                  <div className="mt-2">
+                  <div className="mt-3">
                     <Link
                       href={`/dashboard/jualan/${x.productId}`}
-                      className="text-sm underline text-black/70 dark:text-white/70"
+                      className="text-sm font-medium text-slate-700 underline-offset-4 hover:underline dark:text-slate-200"
                     >
                       Buka produk
                     </Link>
@@ -348,7 +428,7 @@ export default function StaticPage() {
             })}
           </div>
         )}
-      </div>
+      </GlassCard>
     </div>
   );
 }
