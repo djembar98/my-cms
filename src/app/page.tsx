@@ -27,6 +27,12 @@ type ProductRow = {
   image_url: string | null;
   wa_number: string;
   created_at: string;
+
+  // ✅ new badge fields
+  promo: boolean;
+  promo_text: string | null;
+  garansi: boolean;
+  support_device: boolean;
 };
 
 type OfferRow = {
@@ -82,9 +88,7 @@ function timeAgo(dateISO: string) {
   return `${days} hari lalu`;
 }
 
-/* ---------- BADGE helpers (konsisten glass + dark mode) ---------- */
 type FeatureKey = "garansi" | "support_device" | "promo";
-
 function pillFeatureClass(kind: FeatureKey) {
   const base =
     "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium backdrop-blur-xl";
@@ -109,7 +113,6 @@ function pillFeatureClass(kind: FeatureKey) {
       ].join(" ");
   }
 }
-/* --------------------------------------------------------------- */
 
 export default function HomePage() {
   const supabase = createSupabaseBrowserClient();
@@ -127,7 +130,9 @@ export default function HomePage() {
 
     const { data: p, error: pErr } = await supabase
       .from("products")
-      .select("id,name,category,type,description,image_url,wa_number,created_at")
+      .select(
+        "id,name,category,type,description,image_url,wa_number,created_at,promo,promo_text,garansi,support_device"
+      )
       .order("created_at", { ascending: false });
 
     if (pErr) {
@@ -301,11 +306,7 @@ export default function HomePage() {
 
             <div className="mt-6 grid max-w-xl grid-cols-3 gap-3">
               {[
-                {
-                  icon: <ShoppingBag className="h-4 w-4" />,
-                  t: `${stats.products}`,
-                  s: "Produk",
-                },
+                { icon: <ShoppingBag className="h-4 w-4" />, t: `${stats.products}`, s: "Produk" },
                 { icon: <Filter className="h-4 w-4" />, t: `${stats.offers}`, s: "Paket" },
                 { icon: <Megaphone className="h-4 w-4" />, t: `${stats.posts}`, s: "Update" },
               ].map((x) => (
@@ -376,11 +377,6 @@ export default function HomePage() {
                   Jangan lupa <b>tanya stok</b> dulu ya ✨
                 </li>
               </ol>
-
-              <div className="mt-4 rounded-2xl border border-white/20 bg-white/40 p-3 text-xs text-slate-700/70 dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
-                Kalau kamu mau, nanti kita bisa tambah: badge “garansi”, “support device”,
-                dan highlight promo.
-              </div>
             </div>
           </div>
         </div>
@@ -454,6 +450,9 @@ export default function HomePage() {
                 const msg = `Halo admin, saya mau order: ${p.name} (${p.type}). Bisa cek stok?`;
                 const hrefWA = waLink(p.wa_number, msg);
 
+                const showPromo = !!p.promo;
+                const promoText = (p.promo_text || "").trim() || "Promo";
+
                 return (
                   <div
                     key={p.id}
@@ -492,14 +491,26 @@ export default function HomePage() {
                           </span>
                         </div>
 
-                        {/* Badges: garansi / support device / promo */}
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <span className={pillFeatureClass("garansi")}>✅ Garansi</span>
-                          <span className={pillFeatureClass("support_device")}>
-                            📱 Support device
-                          </span>
-                          <span className={pillFeatureClass("promo")}>✨ Promo</span>
-                        </div>
+                        {/* ✅ Badges dinamis */}
+                        {(p.garansi || p.support_device || showPromo) && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {p.garansi && (
+                              <span className={pillFeatureClass("garansi")}>
+                                ✅ Garansi
+                              </span>
+                            )}
+                            {p.support_device && (
+                              <span className={pillFeatureClass("support_device")}>
+                                📱 Support device
+                              </span>
+                            )}
+                            {showPromo && (
+                              <span className={pillFeatureClass("promo")}>
+                                ✨ {promoText}
+                              </span>
+                            )}
+                          </div>
+                        )}
 
                         <div className="mt-2 text-xs text-slate-600/70 dark:text-slate-300/60">
                           {min !== null ? (
@@ -560,71 +571,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Posts */}
-      <section id="posts" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
-        <div className="flex items-end justify-between gap-4">
-          <div>
-            <div className="text-2xl font-semibold tracking-tight">Post</div>
-            <div className="text-sm text-slate-600/80 dark:text-slate-300/70">
-              Info / update terbaru (lebih ringan dari Jualan).
-            </div>
-          </div>
-
-          <Link
-            href="/posts"
-            className="text-sm font-semibold text-indigo-600 hover:text-indigo-700 underline-offset-4 hover:underline dark:text-sky-300 dark:hover:text-sky-200"
-          >
-            Lihat semua
-          </Link>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(posts ?? []).map((x) => (
-            <Link
-              key={x.id}
-              href={`/posts/${x.id}`}
-              className={cx(
-                "group rounded-3xl border border-white/20 bg-white/45 p-4 backdrop-blur-xl transition",
-                "hover:-translate-y-0.5 hover:bg-white/60",
-                "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-              )}
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="line-clamp-1 text-sm font-semibold">{x.title}</div>
-                  <div className="mt-1 text-xs text-slate-600/70 dark:text-slate-300/60">
-                    {timeAgo(x.created_at)}
-                  </div>
-                </div>
-                <ArrowRight className="h-4 w-4 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-70" />
-              </div>
-
-              {x.content && (
-                <p className="mt-3 line-clamp-3 text-sm text-slate-700/75 dark:text-slate-300/70">
-                  {x.content}
-                </p>
-              )}
-
-              {x.image_url && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={x.image_url}
-                  alt={x.title}
-                  className="mt-4 h-36 w-full rounded-2xl border border-white/20 object-cover dark:border-white/10"
-                />
-              )}
-            </Link>
-          ))}
-
-          {posts.length === 0 && !loading && (
-            <div className="rounded-3xl border border-white/20 bg-white/45 p-6 text-sm text-slate-700/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
-              Belum ada post.
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Footer */}
+      {/* Footer (tetap seperti punyamu) */}
       <footer className="border-t border-white/20 bg-white/30 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-12">
@@ -699,7 +646,6 @@ export default function HomePage() {
 
             <div className="lg:col-span-4">
               <div className="text-sm font-semibold">Info</div>
-
               <div className="mt-3 rounded-3xl border border-white/20 bg-white/35 p-4 text-sm text-slate-700/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 inline-block h-2 w-2 rounded-full bg-emerald-400/80" />
@@ -707,14 +653,10 @@ export default function HomePage() {
                     <div className="font-medium text-slate-900 dark:text-slate-100">
                       Jam respon
                     </div>
-                    <div className="mt-1">
-                      Edit teks ini (misal: 09.00–22.00 WIB) sesuai kebutuhan.
-                    </div>
+                    <div className="mt-1">09.00–22.00 WIB</div>
                   </div>
                 </div>
-
                 <div className="mt-3 h-px bg-white/30 dark:bg-white/10" />
-
                 <div className="mt-3 text-xs">
                   Dengan order, kamu setuju dengan ketentuan layanan store.
                 </div>
@@ -732,7 +674,6 @@ export default function HomePage() {
         </div>
       </footer>
 
-      {/* Floating WA */}
       {footerWADigits ? (
         <a
           href={waLink(footerWADigits, "Halo admin, saya mau tanya stok 😊")}
