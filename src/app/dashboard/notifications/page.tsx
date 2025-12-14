@@ -61,7 +61,7 @@ function SoftButton({
   className,
   type,
 }: {
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   disabled?: boolean;
   children: React.ReactNode;
   className?: string;
@@ -91,7 +91,7 @@ function DangerButton({
   children,
   className,
 }: {
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   disabled?: boolean;
   children: React.ReactNode;
   className?: string;
@@ -322,7 +322,12 @@ export default function NotificationsPage() {
                       </div>
                     )}
 
-                    <div className={cx("mt-2 text-xs text-slate-500", "dark:text-slate-400")}>
+                    <div
+                      className={cx(
+                        "mt-2 text-xs text-slate-500",
+                        "dark:text-slate-400"
+                      )}
+                    >
                       {fmtDate(n.created_at)}
                     </div>
                   </div>
