@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-
 function cx(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
 }
@@ -82,6 +81,35 @@ function timeAgo(dateISO: string) {
   const days = Math.floor(hrs / 24);
   return `${days} hari lalu`;
 }
+
+/* ---------- BADGE helpers (konsisten glass + dark mode) ---------- */
+type FeatureKey = "garansi" | "support_device" | "promo";
+
+function pillFeatureClass(kind: FeatureKey) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium backdrop-blur-xl";
+  switch (kind) {
+    case "promo":
+      return [
+        base,
+        "border-fuchsia-300/40 bg-fuchsia-200/30 text-fuchsia-900",
+        "dark:border-fuchsia-400/30 dark:bg-fuchsia-500/10 dark:text-fuchsia-200",
+      ].join(" ");
+    case "garansi":
+      return [
+        base,
+        "border-emerald-300/40 bg-emerald-200/30 text-emerald-900",
+        "dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:text-emerald-200",
+      ].join(" ");
+    case "support_device":
+      return [
+        base,
+        "border-sky-300/40 bg-sky-200/30 text-sky-900",
+        "dark:border-sky-400/30 dark:bg-sky-500/10 dark:text-sky-200",
+      ].join(" ");
+  }
+}
+/* --------------------------------------------------------------- */
 
 export default function HomePage() {
   const supabase = createSupabaseBrowserClient();
@@ -197,11 +225,19 @@ export default function HomePage() {
         "dark:bg-[#0b1020] dark:text-slate-100"
       )}
     >
+      {/* Header */}
       <header className="sticky top-0 z-20 border-b border-white/20 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/25 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/5">
-              <Image src="/logo.jpg" alt="Premium Store" width={24} height={24} className="h-6 w-6 object-contain" />
+            <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl border border-white/25 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/5">
+              <Image
+                src="/logo.jpg"
+                alt="Sthev`s Stuffs"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-cover"
+                priority
+              />
             </div>
             <div className="leading-tight">
               <div className="text-sm font-semibold">Sthev`s Stuffs</div>
@@ -240,6 +276,7 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 pt-10 sm:px-6 sm:pt-14">
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-7">
@@ -349,6 +386,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Jualan */}
       <section id="jualans" className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -454,6 +492,15 @@ export default function HomePage() {
                           </span>
                         </div>
 
+                        {/* Badges: garansi / support device / promo */}
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <span className={pillFeatureClass("garansi")}>✅ Garansi</span>
+                          <span className={pillFeatureClass("support_device")}>
+                            📱 Support device
+                          </span>
+                          <span className={pillFeatureClass("promo")}>✨ Promo</span>
+                        </div>
+
                         <div className="mt-2 text-xs text-slate-600/70 dark:text-slate-300/60">
                           {min !== null ? (
                             <span>
@@ -513,6 +560,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Posts */}
       <section id="posts" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -576,16 +624,23 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="border-t border-white/20 bg-white/30 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-12">
             <div className="lg:col-span-5">
               <div className="flex items-center gap-3">
-                <div className="grid h-10 w-10 place-items-center rounded-2xl border border-white/25 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/5">
-                  <span className="font-semibold tracking-tight">P</span>
+                <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-2xl border border-white/25 bg-white/45 shadow-sm dark:border-white/10 dark:bg-white/5">
+                  <Image
+                    src="/logo.jpg"
+                    alt="Sthev`s Stuffs"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10 object-cover"
+                  />
                 </div>
                 <div className="leading-tight">
-                  <div className="text-sm font-semibold">Premium Store</div>
+                  <div className="text-sm font-semibold">Sthev`s Stuffs</div>
                   <div className="text-xs text-slate-600/70 dark:text-slate-300/60">
                     Tanya stok dulu ya ✨
                   </div>
@@ -642,7 +697,6 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Info */}
             <div className="lg:col-span-4">
               <div className="text-sm font-semibold">Info</div>
 
@@ -669,7 +723,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-2 border-t border-white/20 pt-5 text-xs text-slate-600/70 dark:border-white/10 dark:text-slate-300/60 sm:flex-row sm:items-center sm:justify-between">
-            <div>© {new Date().getFullYear()} Premium Store. All rights reserved.</div>
+            <div>© {new Date().getFullYear()} Sthev`s Stuffs. All rights reserved.</div>
             <div className="inline-flex items-center gap-1">
               <Sparkles className="h-3.5 w-3.5 opacity-70" />
               Fast checkout via WA
@@ -678,6 +732,7 @@ export default function HomePage() {
         </div>
       </footer>
 
+      {/* Floating WA */}
       {footerWADigits ? (
         <a
           href={waLink(footerWADigits, "Halo admin, saya mau tanya stok 😊")}
