@@ -9,7 +9,7 @@ import { RefreshCw, Plus } from "lucide-react";
 type ProductRow = {
   id: string;
   name: string;
-  type: string; // dipakai sebagai CATEGORY
+  type: string; 
   description: string | null;
   image_url: string | null;
   image_public_id: string | null;
@@ -33,19 +33,23 @@ function cx(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
 }
 
-/* ---- shared style (konsisten login/dashboard) ---- */
 const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
 const inputCls = cx(
-  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
+  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+  "bg-white/60 text-slate-900 placeholder:text-slate-500/70",
   "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
-  "dark:bg-white/5 dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
+  "dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-300/40",
+  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
 );
 
 const selectCls = cx(
-  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
-  "border-slate-200/70",
-  "dark:bg-white/5 dark:border-white/10"
+  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+  "bg-white/60 text-slate-900",
+  "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
+  "dark:bg-[#0b1020]/40 dark:text-slate-100",
+  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15",
+  "dark:[color-scheme:dark]"
 );
 
 function GlassCard({
@@ -89,8 +93,8 @@ function SoftButton({
       disabled={disabled}
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition",
-        "border-slate-200/70 bg-white/60 hover:bg-white/80",
-        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+        "border-slate-200/70 bg-white/60 hover:bg-white/80 text-slate-800",
+        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100",
         "disabled:opacity-60 disabled:pointer-events-none",
         className
       )}
@@ -144,7 +148,6 @@ function Pill({ children }: { children: React.ReactNode }) {
     </span>
   );
 }
-/* -------------------------------------------------- */
 
 export default function JualanPage() {
   const supabase = createSupabaseBrowserClient();
@@ -171,9 +174,7 @@ export default function JualanPage() {
 
     const { data, error } = await supabase
       .from("products")
-      .select(
-        "id,name,type,description,image_url,image_public_id,wa_number,created_at"
-      )
+      .select("id,name,type,description,image_url,image_public_id,wa_number,created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -199,7 +200,7 @@ export default function JualanPage() {
 
     const payload = {
       name: name.trim(),
-      type: category, // ✅ category disimpan ke column "type"
+      type: category, 
       description: description.trim() || null,
       wa_number: waNumber.trim(),
       image_url: image?.url ?? null,
@@ -222,7 +223,6 @@ export default function JualanPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <GlassCard className="p-5 sm:p-6">
         <div className="text-lg font-semibold tracking-tight">Jualan</div>
         <div className={cx("mt-1 text-sm", subtleText)}>
@@ -232,7 +232,6 @@ export default function JualanPage() {
       </GlassCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Form */}
         <GlassCard className="p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="font-semibold tracking-tight">Tambah Produk</div>
@@ -249,17 +248,28 @@ export default function JualanPage() {
               onChange={(e) => setName(e.target.value)}
             />
 
-            <select
-              className={selectCls}
-              value={category}
-              onChange={(e) => setCategory(e.target.value as CategoryKey)}
-            >
-              {CATEGORIES.map((c) => (
-                <option key={c.value} value={c.value}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                Category
+              </div>
+
+              <select
+                className={selectCls}
+                value={category}
+                onChange={(e) => setCategory(e.target.value as CategoryKey)}
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c.value} value={c.value}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className="text-[11px] text-slate-500/80 dark:text-slate-300/50">
+                Kalau dropdown masih “keputihan” di browser tertentu, ini keterbatasan native
+                select. (Tapi dengan <code>color-scheme</code> biasanya sudah fix.)
+              </div>
+            </div>
 
             <textarea
               className={cx(inputCls, "min-h-[120px]")}
@@ -278,17 +288,12 @@ export default function JualanPage() {
             <div className="rounded-2xl border border-white/20 bg-white/40 p-3 dark:border-white/10 dark:bg-white/5">
               <CoverUpload
                 folder="mycms/products"
-                value={
-                  image ? { url: image.url, publicId: image.publicId } : undefined
-                }
+                value={image ? { url: image.url, publicId: image.publicId } : undefined}
                 onChange={(v) => setImage(v ?? null)}
               />
             </div>
 
-            <PrimaryButton
-              onClick={createProduct}
-              disabled={saving || !canSave}
-            >
+            <PrimaryButton onClick={createProduct} disabled={saving || !canSave}>
               <Plus className="h-4 w-4" />
               {saving ? "Menyimpan..." : "Simpan Produk"}
             </PrimaryButton>

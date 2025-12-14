@@ -78,12 +78,36 @@ function formatIDR(n: number) {
 }
 
 function waLink(waNumber: string, message: string) {
-  const phone = waNumber.replace(/[^\d]/g, "");
+  const phone = (waNumber || "").replace(/[^\d]/g, "");
   const text = encodeURIComponent(message);
   return `https://wa.me/${phone}?text=${text}`;
 }
 
-/* ---------- UI helpers (konsisten login/dashboard) ---------- */
+/* ---------- UI helpers (konsisten glass/dashboard) ---------- */
+
+const subtleText = "text-slate-600/80 dark:text-slate-300/70";
+
+const inputCls = cx(
+  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+  "bg-white/60 text-slate-900 placeholder:text-slate-500/70",
+  "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
+  "dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-300/40",
+  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
+);
+
+/**
+ * FIX native select darkmode:
+ * - text/bg jelas
+ * - color-scheme untuk dropdown popup ikut dark di banyak browser
+ */
+const selectCls = cx(
+  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+  "bg-white/60 text-slate-900",
+  "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
+  "dark:bg-[#0b1020]/40 dark:text-slate-100",
+  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15",
+  "dark:[color-scheme:dark]"
+);
 
 function GlassCard({
   className,
@@ -125,8 +149,8 @@ function SoftBtn({
 }) {
   const base = cx(
     "inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-2 text-sm font-medium transition",
-    "border-slate-200/70 bg-white/60 hover:bg-white/80",
-    "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+    "border-slate-200/70 bg-white/60 hover:bg-white/80 text-slate-800",
+    "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100",
     "disabled:opacity-60 disabled:pointer-events-none",
     className
   );
@@ -229,20 +253,6 @@ function Field({
     </div>
   );
 }
-
-const inputCls = cx(
-  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
-  "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
-  "dark:bg-white/5 dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
-);
-
-const selectCls = cx(
-  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
-  "border-slate-200/70",
-  "dark:bg-white/5 dark:border-white/10"
-);
-
-const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
 /* ----------------------------------------------------------- */
 
@@ -412,10 +422,7 @@ export default function JualanDetailPage({
       return;
     }
 
-    const { error } = await supabase
-      .from("products")
-      .delete()
-      .eq("id", productId);
+    const { error } = await supabase.from("products").delete().eq("id", productId);
 
     setDeleting(false);
 
@@ -496,9 +503,7 @@ export default function JualanDetailPage({
   if (!product) {
     return (
       <GlassCard className={cx("p-6", headerBg)}>
-        <div className="text-lg font-semibold tracking-tight">
-          Produk tidak ditemukan
-        </div>
+        <div className="text-lg font-semibold tracking-tight">Produk tidak ditemukan</div>
         <div className="mt-3">
           <SoftBtn as="link" href="/dashboard/jualan">
             <ArrowLeft className="h-4 w-4" />
@@ -521,9 +526,7 @@ export default function JualanDetailPage({
             </SoftBtn>
 
             <div>
-              <div className="text-lg font-semibold tracking-tight">
-                {product.name}
-              </div>
+              <div className="text-lg font-semibold tracking-tight">{product.name}</div>
               <div className={cx("text-sm", subtleText)}>
                 {product.category} • {product.type}
               </div>
@@ -551,10 +554,7 @@ export default function JualanDetailPage({
                   setWaNumber(product.wa_number ?? "");
                   setImage(
                     product.image_url && product.image_public_id
-                      ? {
-                          url: product.image_url,
-                          publicId: product.image_public_id,
-                        }
+                      ? { url: product.image_url, publicId: product.image_public_id }
                       : product.image_url
                       ? { url: product.image_url, publicId: "" }
                       : null
@@ -621,9 +621,7 @@ export default function JualanDetailPage({
                   {product.description}
                 </div>
               ) : (
-                <div className={cx("text-sm", subtleText)}>
-                  Tidak ada deskripsi.
-                </div>
+                <div className={cx("text-sm", subtleText)}>Tidak ada deskripsi.</div>
               )}
 
               <PrimaryBtn
@@ -660,7 +658,7 @@ export default function JualanDetailPage({
                 <Field label="Type">
                   <input
                     className={inputCls}
-                    placeholder='SHARING / PRIVATE / Famplan'
+                    placeholder="SHARING / PRIVATE / Famplan"
                     value={type}
                     onChange={(e) => setType(e.target.value)}
                   />
@@ -688,19 +686,12 @@ export default function JualanDetailPage({
               <div className="rounded-2xl border border-white/20 bg-white/40 p-3 dark:border-white/10 dark:bg-white/5">
                 <CoverUpload
                   folder="mycms/products"
-                  value={
-                    image
-                      ? { url: image.url, publicId: image.publicId }
-                      : undefined
-                  }
+                  value={image ? { url: image.url, publicId: image.publicId } : undefined}
                   onChange={(v) => setImage(v ?? null)}
                 />
               </div>
 
-              <PrimaryBtn
-                onClick={saveProduct}
-                disabled={saving || !canSaveProduct}
-              >
+              <PrimaryBtn onClick={saveProduct} disabled={saving || !canSaveProduct}>
                 <Save className="h-4 w-4" />
                 {saving ? "Menyimpan…" : "Simpan Perubahan"}
               </PrimaryBtn>
@@ -807,10 +798,7 @@ export default function JualanDetailPage({
                         Order WA
                       </SoftBtn>
 
-                      <DangerBtn
-                        onClick={() => deleteOffer(o.id)}
-                        className="px-3"
-                      >
+                      <DangerBtn onClick={() => deleteOffer(o.id)} className="px-3">
                         <Trash2 className="h-4 w-4" />
                         Hapus
                       </DangerBtn>

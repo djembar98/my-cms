@@ -31,7 +31,7 @@ function timeAgo(dateISO: string) {
   return `${days} hari lalu`;
 }
 
-/* ---------- shared style (konsisten login/dashboard) ---------- */
+/* ---------- shared style (konsisten dashboard) ---------- */
 
 const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
@@ -57,9 +57,11 @@ function GlassCard({
 }
 
 const inputCls = cx(
-  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
+  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+  "bg-white/60 text-slate-900 placeholder:text-slate-500/70",
   "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
-  "dark:bg-white/5 dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
+  "dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-300/40",
+  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
 );
 
 function SoftButton({
@@ -82,8 +84,8 @@ function SoftButton({
       disabled={disabled}
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition",
-        "border-slate-200/70 bg-white/60 hover:bg-white/80",
-        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+        "border-slate-200/70 bg-white/60 hover:bg-white/80 text-slate-800",
+        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100",
         "disabled:opacity-60 disabled:pointer-events-none",
         className
       )}
@@ -190,149 +192,130 @@ export default function PostPage() {
   }
 
   return (
-    <main
-      className={cx(
-        "min-h-screen",
-        "bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(56,189,248,0.18),transparent_55%),radial-gradient(1000px_circle_at_80%_20%,rgba(99,102,241,0.16),transparent_55%),radial-gradient(900px_circle_at_70%_80%,rgba(16,185,129,0.10),transparent_55%)]",
-        "bg-slate-50 text-slate-900",
-        "dark:bg-[radial-gradient(1200px_circle_at_20%_10%,rgba(56,189,248,0.12),transparent_55%),radial-gradient(1000px_circle_at_80%_20%,rgba(99,102,241,0.12),transparent_55%),radial-gradient(900px_circle_at_70%_80%,rgba(16,185,129,0.08),transparent_55%)]",
-        "dark:bg-[#0b1020] dark:text-slate-100"
-      )}
-    >
-      <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-        <GlassCard className="p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-lg font-semibold tracking-tight">Post</div>
-              <div className={cx("text-sm", subtleText)}>
-                Tulis info / update terbaru. Bisa pakai gambar.
-              </div>
+    <div className="space-y-6">
+      {/* Header (samain kayak page lain) */}
+      <GlassCard className="p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-lg font-semibold tracking-tight">Post</div>
+            <div className={cx("text-sm", subtleText)}>
+              Tulis info / update terbaru. Bisa pakai gambar.
             </div>
-
-            <SoftButton onClick={load}>
-              <RefreshCw className="h-4 w-4" />
-              Refresh
-            </SoftButton>
           </div>
 
-          <div className="mt-5 grid gap-6 lg:grid-cols-12">
-            {/* Create */}
-            <div className="lg:col-span-5">
-              <GlassCard className="p-4">
-                <div className="text-sm font-semibold tracking-tight">
-                  Tambah Post
-                </div>
+          <SoftButton onClick={load}>
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </SoftButton>
+        </div>
+      </GlassCard>
 
-                <div className="mt-4 space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                      Judul
-                    </label>
-                    <input
-                      className={inputCls}
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Judul post..."
-                    />
-                  </div>
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Create */}
+        <GlassCard className="p-5 sm:p-6 lg:col-span-5">
+          <div className="text-sm font-semibold tracking-tight">Tambah Post</div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                      Isi (opsional)
-                    </label>
-                    <textarea
-                      className={cx(inputCls, "min-h-[140px]")}
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Tulis update..."
-                    />
-                  </div>
-
-                  <div className="rounded-2xl border border-white/20 bg-white/40 p-3 dark:border-white/10 dark:bg-white/5">
-                    <CoverUpload
-                      folder="mycms/posts"
-                      value={
-                        image
-                          ? { url: image.url, publicId: image.publicId }
-                          : undefined
-                      }
-                      onChange={(v) => setImage(v ?? null)}
-                    />
-                  </div>
-
-                  <PrimaryButton
-                    onClick={createPost}
-                    disabled={!canSave || saving}
-                  >
-                    <Plus className="h-4 w-4" />
-                    {saving ? "Menyimpan..." : "Publish"}
-                  </PrimaryButton>
-                </div>
-              </GlassCard>
+          <div className="mt-4 space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                Judul
+              </label>
+              <input
+                className={inputCls}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Judul post..."
+              />
             </div>
 
-            {/* List */}
-            <div className="lg:col-span-7">
-              <div className="text-sm font-semibold tracking-tight">
-                Daftar Post
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                Isi (opsional)
+              </label>
+              <textarea
+                className={cx(inputCls, "min-h-[140px]")}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Tulis update..."
+              />
+            </div>
+
+            <div className="rounded-2xl border border-white/20 bg-white/40 p-3 dark:border-white/10 dark:bg-white/5">
+              <CoverUpload
+                folder="mycms/posts"
+                value={image ? { url: image.url, publicId: image.publicId } : undefined}
+                onChange={(v) => setImage(v ?? null)}
+              />
+            </div>
+
+            <PrimaryButton onClick={createPost} disabled={!canSave || saving}>
+              <Plus className="h-4 w-4" />
+              {saving ? "Menyimpan..." : "Publish"}
+            </PrimaryButton>
+          </div>
+        </GlassCard>
+
+        {/* List */}
+        <GlassCard className="p-5 sm:p-6 lg:col-span-7">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold tracking-tight">Daftar Post</div>
+              <div className={cx("text-sm", subtleText)}>
+                Klik card untuk lihat detail & edit.
               </div>
-
-              {loading ? (
-                <GlassCard className="mt-3 p-4">
-                  <div className={cx("text-sm", subtleText)}>Loading...</div>
-                </GlassCard>
-              ) : items.length === 0 ? (
-                <GlassCard className="mt-3 p-4">
-                  <div className={cx("text-sm", subtleText)}>
-                    Belum ada post.
-                  </div>
-                </GlassCard>
-              ) : (
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {items.map((p) => (
-                    <Link
-                      key={p.id}
-                      href={`/dashboard/post/${p.id}`}
-                      className={cx(
-                        "group rounded-3xl border p-4 backdrop-blur-xl transition",
-                        "border-white/20 bg-white/40 hover:bg-white/60",
-                        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="line-clamp-1 text-sm font-semibold">
-                            {p.title}
-                          </div>
-                          <div className={cx("mt-1 text-xs", subtleText)}>
-                            {timeAgo(p.created_at)}
-                          </div>
-                        </div>
-                        <ArrowRight className="h-4 w-4 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-70" />
-                      </div>
-
-                      {p.image_url && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.image_url}
-                          alt={p.title}
-                          className="mt-3 h-28 w-full rounded-2xl border border-white/20 object-cover dark:border-white/10"
-                        />
-                      )}
-
-                      {p.content && (
-                        <p className="mt-3 line-clamp-2 text-sm text-slate-700/75 dark:text-slate-300/70">
-                          {p.content}
-                        </p>
-                      )}
-                    </Link>
-                  ))}
-                </div>
-              )}
             </div>
+          </div>
+
+          <div className="mt-4">
+            {loading ? (
+              <div className={cx("text-sm", subtleText)}>Loading...</div>
+            ) : items.length === 0 ? (
+              <div className={cx("text-sm", subtleText)}>Belum ada post.</div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {items.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/dashboard/post/${p.id}`}
+                    className={cx(
+                      "group rounded-3xl border p-4 backdrop-blur-xl transition",
+                      "border-white/20 bg-white/40 hover:bg-white/60",
+                      "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="line-clamp-1 text-sm font-semibold">
+                          {p.title}
+                        </div>
+                        <div className={cx("mt-1 text-xs", subtleText)}>
+                          {timeAgo(p.created_at)}
+                        </div>
+                      </div>
+                      <ArrowRight className="h-4 w-4 opacity-40 transition group-hover:translate-x-0.5 group-hover:opacity-70" />
+                    </div>
+
+                    {p.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={p.image_url}
+                        alt={p.title}
+                        className="mt-3 h-28 w-full rounded-2xl border border-white/20 object-cover dark:border-white/10"
+                      />
+                    )}
+
+                    {p.content && (
+                      <p className="mt-3 line-clamp-2 text-sm text-slate-700/75 dark:text-slate-300/70">
+                        {p.content}
+                      </p>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </GlassCard>
       </div>
-    </main>
+    </div>
   );
 }
