@@ -313,7 +313,7 @@ export default function HomePage() {
                 alt="Premium Store"
                 width={24}
                 height={24}
-                className="h-6 w-6 object-contain"
+                className="h-6 w-6 object-cover rounded-full"
               />
             </div>
             <div className="leading-tight">
