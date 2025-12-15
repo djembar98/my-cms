@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CoverUpload } from "@/components/cloudinary/cover-upload";
-import { RefreshCw, Plus } from "lucide-react";
+import { RefreshCw, Plus, ChevronLeft, ChevronRight } from "lucide-react";
 
 type ProductRow = {
   id: string;
   name: string;
-  type: string; 
+  type: string; // dipakai sebagai CATEGORY
   description: string | null;
   image_url: string | null;
   image_public_id: string | null;
@@ -33,23 +33,19 @@ function cx(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
 }
 
+/* ---- shared style (konsisten login/dashboard) ---- */
 const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
 const inputCls = cx(
-  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-  "bg-white/60 text-slate-900 placeholder:text-slate-500/70",
+  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
   "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
-  "dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-300/40",
-  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
+  "dark:bg-white/5 dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
 );
 
 const selectCls = cx(
-  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-  "bg-white/60 text-slate-900",
-  "border-slate-200/70 focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
-  "dark:bg-[#0b1020]/40 dark:text-slate-100",
-  "dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15",
-  "dark:[color-scheme:dark]"
+  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none transition",
+  "border-slate-200/70",
+  "dark:bg-white/5 dark:border-white/10"
 );
 
 function GlassCard({
@@ -93,8 +89,8 @@ function SoftButton({
       disabled={disabled}
       className={cx(
         "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition",
-        "border-slate-200/70 bg-white/60 hover:bg-white/80 text-slate-800",
-        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-100",
+        "border-slate-200/70 bg-white/60 hover:bg-white/80",
+        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
         "disabled:opacity-60 disabled:pointer-events-none",
         className
       )}
@@ -149,6 +145,41 @@ function Pill({ children }: { children: React.ReactNode }) {
   );
 }
 
+/* Pagination UI (ringan & konsisten) */
+function Pager({
+  page,
+  totalPages,
+  onPrev,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3">
+      <SoftButton onClick={onPrev} disabled={page <= 1}>
+        <ChevronLeft className="h-4 w-4" />
+        Prev
+      </SoftButton>
+
+      <div className={cx("text-xs", subtleText)}>
+        Page <b className="text-slate-900 dark:text-slate-100">{page}</b> /{" "}
+        {totalPages}
+      </div>
+
+      <SoftButton onClick={onNext} disabled={page >= totalPages}>
+        Next
+        <ChevronRight className="h-4 w-4" />
+      </SoftButton>
+    </div>
+  );
+}
+/* -------------------------------------------------- */
+
 export default function JualanPage() {
   const supabase = createSupabaseBrowserClient();
 
@@ -174,7 +205,9 @@ export default function JualanPage() {
 
     const { data, error } = await supabase
       .from("products")
-      .select("id,name,type,description,image_url,image_public_id,wa_number,created_at")
+      .select(
+        "id,name,type,description,image_url,image_public_id,wa_number,created_at"
+      )
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -200,7 +233,7 @@ export default function JualanPage() {
 
     const payload = {
       name: name.trim(),
-      type: category, 
+      type: category, // ✅ category disimpan ke column "type"
       description: description.trim() || null,
       wa_number: waNumber.trim(),
       image_url: image?.url ?? null,
@@ -218,11 +251,33 @@ export default function JualanPage() {
     setWaNumber("");
     setImage(null);
 
+    // reset page biar user lihat item terbaru di halaman 1
+    setPage(1);
     load();
   }
 
+  /* ✅ Pagination (client-side, tidak ubah query/logic) */
+  const PER_PAGE = 8;
+  const [page, setPage] = useState(1);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(items.length / PER_PAGE));
+  }, [items.length]);
+
+  const pagedItems = useMemo(() => {
+    const start = (page - 1) * PER_PAGE;
+    return items.slice(start, start + PER_PAGE);
+  }, [items, page]);
+
+  useEffect(() => {
+    // jaga kalau page kebesaran setelah delete/refresh
+    if (page > totalPages) setPage(totalPages);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [totalPages]);
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <GlassCard className="p-5 sm:p-6">
         <div className="text-lg font-semibold tracking-tight">Jualan</div>
         <div className={cx("mt-1 text-sm", subtleText)}>
@@ -232,6 +287,7 @@ export default function JualanPage() {
       </GlassCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
+        {/* Form */}
         <GlassCard className="p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div className="font-semibold tracking-tight">Tambah Produk</div>
@@ -248,28 +304,17 @@ export default function JualanPage() {
               onChange={(e) => setName(e.target.value)}
             />
 
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-slate-600 dark:text-slate-300">
-                Category
-              </div>
-
-              <select
-                className={selectCls}
-                value={category}
-                onChange={(e) => setCategory(e.target.value as CategoryKey)}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c.value} value={c.value}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-
-              <div className="text-[11px] text-slate-500/80 dark:text-slate-300/50">
-                Kalau dropdown masih “keputihan” di browser tertentu, ini keterbatasan native
-                select. (Tapi dengan <code>color-scheme</code> biasanya sudah fix.)
-              </div>
-            </div>
+            <select
+              className={selectCls}
+              value={category}
+              onChange={(e) => setCategory(e.target.value as CategoryKey)}
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
 
             <textarea
               className={cx(inputCls, "min-h-[120px]")}
@@ -288,7 +333,9 @@ export default function JualanPage() {
             <div className="rounded-2xl border border-white/20 bg-white/40 p-3 dark:border-white/10 dark:bg-white/5">
               <CoverUpload
                 folder="mycms/products"
-                value={image ? { url: image.url, publicId: image.publicId } : undefined}
+                value={
+                  image ? { url: image.url, publicId: image.publicId } : undefined
+                }
                 onChange={(v) => setImage(v ?? null)}
               />
             </div>
@@ -310,7 +357,12 @@ export default function JualanPage() {
               </div>
             </div>
 
-            <SoftButton onClick={load}>
+            <SoftButton
+              onClick={() => {
+                setPage(1);
+                load();
+              }}
+            >
               <RefreshCw className="h-4 w-4" />
               Refresh
             </SoftButton>
@@ -322,41 +374,50 @@ export default function JualanPage() {
             ) : items.length === 0 ? (
               <div className={cx("text-sm", subtleText)}>Belum ada produk.</div>
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {items.map((p) => (
-                  <Link
-                    key={p.id}
-                    href={`/dashboard/jualan/${p.id}`}
-                    className={cx(
-                      "group rounded-3xl border p-4 transition",
-                      "border-white/20 bg-white/40 hover:bg-white/60",
-                      "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-medium truncate">{p.name}</div>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <Pill>{p.type}</Pill>
-                          <Pill>WA: {p.wa_number}</Pill>
-                        </div>
-                      </div>
-
-                      {p.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={p.image_url}
-                          alt={p.name}
-                          className="h-12 w-12 rounded-2xl border border-white/20 object-cover bg-white/40 dark:border-white/10"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 rounded-2xl border border-white/20 bg-white/30 dark:border-white/10 dark:bg-white/5" />
+              <>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {pagedItems.map((p) => (
+                    <Link
+                      key={p.id}
+                      href={`/dashboard/jualan/${p.id}`}
+                      className={cx(
+                        "group rounded-3xl border p-4 transition",
+                        "border-white/20 bg-white/40 hover:bg-white/60",
+                        "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
                       )}
-                    </div>
-                  </Link>
-                ))}
-              </div>
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{p.name}</div>
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <Pill>{p.type}</Pill>
+                            <Pill>WA: {p.wa_number}</Pill>
+                          </div>
+                        </div>
+
+                        {p.image_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={p.image_url}
+                            alt={p.name}
+                            className="h-12 w-12 rounded-2xl border border-white/20 object-cover bg-white/40 dark:border-white/10"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 rounded-2xl border border-white/20 bg-white/30 dark:border-white/10 dark:bg-white/5" />
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+
+                <Pager
+                  page={page}
+                  totalPages={totalPages}
+                  onPrev={() => setPage((p) => Math.max(1, p - 1))}
+                  onNext={() => setPage((p) => Math.min(totalPages, p + 1))}
+                />
+              </>
             )}
           </div>
         </GlassCard>

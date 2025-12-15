@@ -178,11 +178,16 @@ export default function PublicProductDetailPage() {
               <div className="lg:col-span-5">
                 {product.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="h-[240px] w-full rounded-3xl border border-white/20 object-cover bg-white/40 dark:border-white/10"
-                  />
+                  <div className="w-full overflow-hidden rounded-3xl border border-white/20 bg-white/40 dark:border-white/10 dark:bg-white/5">
+  <div className="aspect-square w-full">
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img
+      src={product.image_url}
+      alt={product.name}
+      className="h-full w-full object-cover"
+    />
+  </div>
+</div>
                 ) : (
                   <div className="grid h-[240px] w-full place-items-center rounded-3xl border border-white/20 bg-white/35 text-sm text-slate-600/70 dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
                     Tidak ada gambar
