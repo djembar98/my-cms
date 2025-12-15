@@ -146,6 +146,8 @@ function Pager({
   );
 }
 
+type ProductSort = "NEWEST" | "OLDEST" | "AZ" | "ZA";
+
 export default function HomePage() {
   const supabase = createSupabaseBrowserClient();
 
@@ -157,11 +159,11 @@ export default function HomePage() {
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("ALL");
 
-  // ✅ Sort alfabet
-  const [sortAZ, setSortAZ] = useState<"AZ" | "ZA">("AZ");
+  // ✅ default: terbaru
+  const [sortMode, setSortMode] = useState<ProductSort>("NEWEST");
 
-  const PRODUCTS_PER_PAGE = 9; // 3x3 grid enak
-  const POSTS_PER_PAGE = 6; // 2x3 grid enak
+  const PRODUCTS_PER_PAGE = 9;
+  const POSTS_PER_PAGE = 6;
 
   const [prodPage, setProdPage] = useState(1);
   const [postPage, setPostPage] = useState(1);
@@ -233,7 +235,6 @@ export default function HomePage() {
     return arr;
   }, [products]);
 
-  // filter dulu
   const filteredRaw = useMemo(() => {
     const query = q.trim().toLowerCase();
     return products.filter((p) => {
@@ -246,21 +247,25 @@ export default function HomePage() {
     });
   }, [products, q, activeCat]);
 
-  // ✅ lalu sort alfabet
   const filtered = useMemo(() => {
     const arr = [...filteredRaw];
     arr.sort((a, b) => {
+      if (sortMode === "NEWEST" || sortMode === "OLDEST") {
+        const at = new Date(a.created_at).getTime();
+        const bt = new Date(b.created_at).getTime();
+        return sortMode === "NEWEST" ? bt - at : at - bt;
+      }
       const an = (a.name || "").trim().toLowerCase();
       const bn = (b.name || "").trim().toLowerCase();
       const cmp = an.localeCompare(bn, "id");
-      return sortAZ === "AZ" ? cmp : -cmp;
+      return sortMode === "AZ" ? cmp : -cmp;
     });
     return arr;
-  }, [filteredRaw, sortAZ]);
+  }, [filteredRaw, sortMode]);
 
   useEffect(() => {
     setProdPage(1);
-  }, [q, activeCat, sortAZ]);
+  }, [q, activeCat, sortMode]);
 
   const stats = useMemo(() => {
     const totalOffers = Object.values(offers).reduce(
@@ -313,7 +318,7 @@ export default function HomePage() {
                 alt="Premium Store"
                 width={24}
                 height={24}
-                className="h-6 w-6 object-cover rounded-full"
+                className="h-6 w-6 object-contain"
               />
             </div>
             <div className="leading-tight">
@@ -371,8 +376,8 @@ export default function HomePage() {
             </h1>
 
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-700/70 dark:text-slate-300/70">
-              Semua produk ditampilkan dalam card yang rapi. Lihat paket harga (offers),
-              lalu klik “Order WA” untuk chat admin.
+              Semua produk ditampilkan dalam card yang rapi. Lihat paket harga
+              (offers), lalu klik “Order WA” untuk chat admin.
             </p>
 
             <div className="mt-6 grid max-w-xl grid-cols-3 gap-3">
@@ -492,40 +497,37 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ✅ Sort bar (baru) */}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        {/* ✅ sort bar */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
             Menampilkan <b>{filtered.length}</b> produk
           </div>
 
-          <div className="inline-flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
               Sort:
             </div>
-            <button
-              type="button"
-              onClick={() => setSortAZ("AZ")}
-              className={cx(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                sortAZ === "AZ"
-                  ? "border-transparent text-white bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(56,189,248,0.95))]"
-                  : "border-slate-200/70 bg-white/50 hover:bg-white/75 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-              )}
-            >
-              A–Z
-            </button>
-            <button
-              type="button"
-              onClick={() => setSortAZ("ZA")}
-              className={cx(
-                "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
-                sortAZ === "ZA"
-                  ? "border-transparent text-white bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(56,189,248,0.95))]"
-                  : "border-slate-200/70 bg-white/50 hover:bg-white/75 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
-              )}
-            >
-              Z–A
-            </button>
+
+            {[
+              { v: "NEWEST" as const, label: "Terbaru" },
+              { v: "OLDEST" as const, label: "Terlama" },
+              { v: "AZ" as const, label: "A–Z" },
+              { v: "ZA" as const, label: "Z–A" },
+            ].map((x) => (
+              <button
+                key={x.v}
+                type="button"
+                onClick={() => setSortMode(x.v)}
+                className={cx(
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  sortMode === x.v
+                    ? "border-transparent text-white bg-[linear-gradient(135deg,rgba(99,102,241,0.95),rgba(56,189,248,0.95))]"
+                    : "border-slate-200/70 bg-white/50 hover:bg-white/75 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                )}
+              >
+                {x.label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -555,7 +557,6 @@ export default function HomePage() {
                   const cat = p.category ?? "OTHERS";
                   const catLabel = CATEGORY_LABEL[cat] ?? cat;
 
-                  // (Tetap sama seperti logic kamu sebelumnya)
                   const msg = `Halo admin, saya mau order: ${p.name} (${capWords(
                     p.type
                   )}). Bisa cek stok?`;
@@ -713,7 +714,9 @@ export default function HomePage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="line-clamp-1 text-sm font-semibold">{x.title}</div>
+                        <div className="line-clamp-1 text-sm font-semibold">
+                          {x.title}
+                        </div>
                         <div className="mt-1 text-xs text-slate-600/70 dark:text-slate-300/60">
                           {timeAgo(x.created_at)}
                         </div>
