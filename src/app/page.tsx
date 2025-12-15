@@ -84,6 +84,16 @@ function timeAgo(dateISO: string) {
   return `${days} hari lalu`;
 }
 
+function toTitleCase(s: string) {
+  const t = (s || "").trim();
+  if (!t) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
+
+function renderTemplate(tpl: string, vars: Record<string, string>) {
+  return (tpl || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => vars[k] ?? "");
+}
+
 function Pager({
   page,
   totalPages,
@@ -148,11 +158,15 @@ export default function HomePage() {
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("ALL");
 
-  const PRODUCTS_PER_PAGE = 9; // 3x3 grid enak
-  const POSTS_PER_PAGE = 6; // 2x3 grid enak
+  const PRODUCTS_PER_PAGE = 9;
+  const POSTS_PER_PAGE = 6;
 
   const [prodPage, setProdPage] = useState(1);
   const [postPage, setPostPage] = useState(1);
+
+  const [waTemplate, setWATemplate] = useState(
+    "Halo admin, saya mau order: {{name}} ({{type}}). Bisa cek stok?"
+  );
 
   async function load() {
     setLoading(true);
@@ -201,6 +215,20 @@ export default function HomePage() {
       .limit(60);
 
     if (!psErr) setPosts((ps ?? []) as PostRow[]);
+
+    // ✅ ambil template WA dari DB (kalau ada)
+    try {
+      const { data: s, error: sErr } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "wa_order_template")
+        .maybeSingle();
+
+      if (!sErr && s?.value) setWATemplate(String(s.value));
+    } catch {
+      // fallback default, no alert (biar gak ganggu user)
+    }
+
     setLoading(false);
   }
 
@@ -423,7 +451,6 @@ export default function HomePage() {
                   Jangan lupa <b>tanya stok</b> dulu ya ✨
                 </li>
               </ol>
-
             </div>
           </div>
         </div>
@@ -491,10 +518,16 @@ export default function HomePage() {
                     ? Math.min(...list.map((x) => Number(x.price || 0)))
                     : null;
 
-                  const cat = p.category ?? "OTHERS";
-                  const catLabel = CATEGORY_LABEL[cat] ?? cat;
+                  const catKey = p.category ?? "OTHERS";
+                  const catLabel = CATEGORY_LABEL[catKey] ?? catKey;
 
-                  const msg = `Halo admin, saya mau order: ${p.name} (${p.type}). Bisa cek stok?`;
+                  const msg = renderTemplate(waTemplate, {
+                    name: p.name,
+                    type: toTitleCase(p.type),
+                    category: catLabel,
+                    minPrice: min !== null ? `Rp ${formatRp(min)}` : "",
+                  });
+
                   const hrefWA = waLink(p.wa_number, msg);
 
                   return (
@@ -528,7 +561,7 @@ export default function HomePage() {
 
                           <div className="mt-1 flex flex-wrap items-center gap-2">
                             <span className="rounded-full border border-white/20 bg-white/40 px-2 py-0.5 text-[11px] font-medium text-slate-700/80 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
-                              {p.type.toLowerCase()}
+                              {toTitleCase(p.type)}
                             </span>
                             <span className="rounded-full border border-white/20 bg-white/40 px-2 py-0.5 text-[11px] font-medium text-slate-700/80 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
                               {catLabel}
@@ -602,7 +635,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Posts */}
       <section id="posts" className="mx-auto max-w-6xl px-4 pb-16 sm:px-6">
         <div className="flex items-end justify-between gap-4">
           <div>
@@ -768,9 +800,7 @@ export default function HomePage() {
                     <div className="font-medium text-slate-900 dark:text-slate-100">
                       Jam respon
                     </div>
-                    <div className="mt-1">
-                      09.00–22.00 WIB
-                    </div>
+                    <div className="mt-1">09.00–22.00 WIB</div>
                   </div>
                 </div>
 

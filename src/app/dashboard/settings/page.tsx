@@ -3,12 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { KeyRound, LogOut, Mail, ShieldCheck } from "lucide-react";
+import {
+  KeyRound,
+  LogOut,
+  Mail,
+  ShieldCheck,
+  MessageCircle,
+  Save,
+  RefreshCw,
+} from "lucide-react";
 
 function cx(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
 }
-
 
 const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
@@ -130,6 +137,9 @@ function DangerButton({
   );
 }
 
+function renderTemplate(tpl: string, vars: Record<string, string>) {
+  return (tpl || "").replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => vars[k] ?? "");
+}
 
 export default function SecuritySettingsPage() {
   const router = useRouter();
@@ -145,6 +155,12 @@ export default function SecuritySettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [savingPass, setSavingPass] = useState(false);
 
+  const [waTemplate, setWATemplate] = useState(
+    "Halo admin, saya mau order: {{name}} ({{type}}). Bisa cek stok?"
+  );
+  const [waLoading, setWALoading] = useState(false);
+  const [waSaving, setWASaving] = useState(false);
+
   const canSaveEmail = useMemo(
     () => newEmail.trim().length > 5 && newEmail.includes("@"),
     [newEmail]
@@ -153,6 +169,7 @@ export default function SecuritySettingsPage() {
     () => newPassword.trim().length >= 8,
     [newPassword]
   );
+  const canSaveWATpl = useMemo(() => waTemplate.trim().length > 0, [waTemplate]);
 
   useEffect(() => {
     async function init() {
@@ -165,10 +182,46 @@ export default function SecuritySettingsPage() {
       setCurrentEmail(data.user.email ?? "");
       setProvider(String(data.user.app_metadata?.provider ?? "email"));
       setLoading(false);
+
+      await loadWATemplate();
     }
     init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function loadWATemplate() {
+    setWALoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "wa_order_template")
+        .maybeSingle();
+
+      if (!error && data?.value) setWATemplate(String(data.value));
+    } catch {
+    }
+    setWALoading(false);
+  }
+
+  async function saveWATemplate() {
+    if (!canSaveWATpl) return;
+
+    setWASaving(true);
+    const payload = {
+      key: "wa_order_template",
+      value: waTemplate.trim(),
+    };
+
+    const { error } = await supabase.from("app_settings").upsert(payload, {
+      onConflict: "key",
+    });
+
+    setWASaving(false);
+
+    if (error) return alert(error.message);
+    alert("Template WA tersimpan ✅");
+  }
 
   async function updateEmail() {
     if (!canSaveEmail) return;
@@ -239,6 +292,67 @@ export default function SecuritySettingsPage() {
           </div>
 
           <div className="rounded-3xl border border-white/20 bg-white/40 p-5 dark:border-white/10 dark:bg-white/5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <MessageCircle className="h-4 w-4 opacity-80" />
+                <div className="text-sm font-semibold tracking-tight">
+                  Template Pesan WhatsApp (Order)
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={loadWATemplate}
+                disabled={waLoading}
+                className={cx(
+                  "inline-flex items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-sm font-medium transition",
+                  "border-slate-200/70 bg-white/60 hover:bg-white/80",
+                  "dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10",
+                  "disabled:opacity-60 disabled:pointer-events-none"
+                )}
+              >
+                <RefreshCw className="h-4 w-4" />
+                {waLoading ? "Loading..." : "Refresh"}
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <textarea
+                className={cx(inputCls, "min-h-[140px]")}
+                value={waTemplate}
+                onChange={(e) => setWATemplate(e.target.value)}
+                placeholder="Tulis template pesan WA..."
+              />
+
+              <PrimaryButton
+                onClick={saveWATemplate}
+                disabled={!canSaveWATpl || waSaving}
+              >
+                <Save className="h-4 w-4" />
+                {waSaving ? "Menyimpan..." : "Simpan Template WA"}
+              </PrimaryButton>
+
+              <div className={cx("text-xs", subtleText)}>
+                Placeholder yang bisa dipakai:{" "}
+                <b>{"{{name}}"}</b>, <b>{"{{type}}"}</b>, <b>{"{{category}}"}</b>,{" "}
+                <b>{"{{minPrice}}"}</b>
+              </div>
+
+              <div className="rounded-3xl border border-white/20 bg-white/35 p-4 text-sm text-slate-700/70 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
+                <div className="text-xs font-semibold mb-2">Preview contoh</div>
+                <div className="whitespace-pre-wrap">
+                  {renderTemplate(waTemplate, {
+                    name: "Remini",
+                    type: "Photos",
+                    category: "Editing",
+                    minPrice: "Rp 25.000",
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-white/20 bg-white/40 p-5 dark:border-white/10 dark:bg-white/5">
             <div className="flex items-center gap-2">
               <Mail className="h-4 w-4 opacity-80" />
               <div className="text-sm font-semibold tracking-tight">
@@ -258,7 +372,9 @@ export default function SecuritySettingsPage() {
                 onClick={updateEmail}
                 disabled={!canSaveEmail || savingEmail}
               >
-                {savingEmail ? "Meminta verifikasi..." : "Update Email (butuh verifikasi)"}
+                {savingEmail
+                  ? "Meminta verifikasi..."
+                  : "Update Email (butuh verifikasi)"}
               </SoftButton>
 
               <div className={cx("text-xs", subtleText)}>
@@ -267,7 +383,6 @@ export default function SecuritySettingsPage() {
             </div>
           </div>
 
-          {/* Change password */}
           <div className="rounded-3xl border border-white/20 bg-white/40 p-5 dark:border-white/10 dark:bg-white/5">
             <div className="flex items-center gap-2">
               <KeyRound className="h-4 w-4 opacity-80" />
@@ -293,7 +408,8 @@ export default function SecuritySettingsPage() {
               </PrimaryButton>
 
               <div className={cx("text-xs", subtleText)}>
-                Kalau login Google, password tetap boleh dibuat untuk login email/password.
+                Kalau login Google, password tetap boleh dibuat untuk login
+                email/password.
               </div>
             </div>
           </div>
