@@ -125,6 +125,15 @@ export default function HomePage() {
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("ALL");
 
+  function titleCase(s: string) {
+    const v = (s || "").trim();
+    if (!v) return "";
+    return v
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  }
+
   async function load() {
     setLoading(true);
 
@@ -201,7 +210,9 @@ export default function HomePage() {
         activeCat === "ALL" ? true : (p.category ?? "OTHERS") === activeCat;
       if (!okCat) return false;
       if (!query) return true;
-      const hay = `${p.name} ${(p.type || "")} ${(p.description || "")}`.toLowerCase();
+      const hay = `${p.name} ${p.type || ""} ${
+        p.description || ""
+      }`.toLowerCase();
       return hay.includes(query);
     });
   }, [products, q, activeCat]);
@@ -230,7 +241,6 @@ export default function HomePage() {
         "dark:bg-[#0b1020] dark:text-slate-100"
       )}
     >
-      {/* Header */}
       <header className="sticky top-0 z-20 border-b border-white/20 bg-white/40 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="flex items-center gap-3">
@@ -281,7 +291,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="mx-auto max-w-6xl px-4 pt-10 sm:px-6 sm:pt-14">
         <div className="grid gap-6 lg:grid-cols-12">
           <div className="lg:col-span-7">
@@ -300,15 +309,27 @@ export default function HomePage() {
             </h1>
 
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-700/70 dark:text-slate-300/70">
-              Semua produk ditampilkan dalam card yang rapi. Lihat paket harga (offers),
-              lalu klik “Order WA” untuk chat admin.
+              Semua produk ditampilkan dalam card yang rapi. Lihat paket harga
+              (offers), lalu klik “Order WA” untuk chat admin.
             </p>
 
             <div className="mt-6 grid max-w-xl grid-cols-3 gap-3">
               {[
-                { icon: <ShoppingBag className="h-4 w-4" />, t: `${stats.products}`, s: "Produk" },
-                { icon: <Filter className="h-4 w-4" />, t: `${stats.offers}`, s: "Paket" },
-                { icon: <Megaphone className="h-4 w-4" />, t: `${stats.posts}`, s: "Update" },
+                {
+                  icon: <ShoppingBag className="h-4 w-4" />,
+                  t: `${stats.products}`,
+                  s: "Produk",
+                },
+                {
+                  icon: <Filter className="h-4 w-4" />,
+                  t: `${stats.offers}`,
+                  s: "Paket",
+                },
+                {
+                  icon: <Megaphone className="h-4 w-4" />,
+                  t: `${stats.posts}`,
+                  s: "Update",
+                },
               ].map((x) => (
                 <div
                   key={x.s}
@@ -316,7 +337,9 @@ export default function HomePage() {
                 >
                   <div className="flex items-center gap-2 text-slate-700/80 dark:text-slate-200/80">
                     {x.icon}
-                    <div className="text-lg font-semibold leading-none">{x.t}</div>
+                    <div className="text-lg font-semibold leading-none">
+                      {x.t}
+                    </div>
                   </div>
                   <div className="mt-1 text-xs text-slate-600/70 dark:text-slate-300/60">
                     {x.s}
@@ -382,8 +405,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Jualan */}
-      <section id="jualans" className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6">
+      <section
+        id="jualans"
+        className="mx-auto max-w-6xl px-4 pb-14 pt-10 sm:px-6"
+      >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-2xl font-semibold tracking-tight">Jualan</div>
@@ -480,18 +505,19 @@ export default function HomePage() {
                       )}
 
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold">{p.name}</div>
+                        <div className="truncate text-sm font-semibold">
+                          {p.name}
+                        </div>
 
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <span className="rounded-full border border-white/20 bg-white/40 px-2 py-0.5 text-[11px] font-medium text-slate-700/80 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
-                            {p.type.toLowerCase()}
+                            {titleCase(p.type)}
                           </span>
                           <span className="rounded-full border border-white/20 bg-white/40 px-2 py-0.5 text-[11px] font-medium text-slate-700/80 dark:border-white/10 dark:bg-white/5 dark:text-slate-200/80">
                             {catLabel}
                           </span>
                         </div>
 
-                        {/* ✅ Badges dinamis */}
                         {(p.garansi || p.support_device || showPromo) && (
                           <div className="mt-2 flex flex-wrap gap-2">
                             {p.garansi && (
@@ -500,7 +526,9 @@ export default function HomePage() {
                               </span>
                             )}
                             {p.support_device && (
-                              <span className={pillFeatureClass("support_device")}>
+                              <span
+                                className={pillFeatureClass("support_device")}
+                              >
                                 📱 Support device
                               </span>
                             )}
@@ -571,7 +599,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Footer (tetap seperti punyamu) */}
       <footer className="border-t border-white/20 bg-white/30 backdrop-blur-xl dark:border-white/10 dark:bg-white/5">
         <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <div className="grid gap-6 lg:grid-cols-12">
@@ -595,13 +622,16 @@ export default function HomePage() {
               </div>
 
               <p className="mt-3 max-w-md text-sm text-slate-700/70 dark:text-slate-300/70">
-                Produk rapi, paket jelas, order cepat via WhatsApp. Update terbaru juga
-                tersedia di bagian Post.
+                Produk rapi, paket jelas, order cepat via WhatsApp. Update
+                terbaru juga tersedia di bagian Post.
               </p>
 
               {footerWADigits ? (
                 <a
-                  href={waLink(footerWADigits, "Halo admin, saya mau tanya stok 😊")}
+                  href={waLink(
+                    footerWADigits,
+                    "Halo admin, saya mau tanya stok 😊"
+                  )}
                   target="_blank"
                   rel="noreferrer"
                   className={cx(
@@ -665,7 +695,9 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-2 border-t border-white/20 pt-5 text-xs text-slate-600/70 dark:border-white/10 dark:text-slate-300/60 sm:flex-row sm:items-center sm:justify-between">
-            <div>© {new Date().getFullYear()} Sthev`s Stuffs. All rights reserved.</div>
+            <div>
+              © {new Date().getFullYear()} Sthev`s Stuffs. All rights reserved.
+            </div>
             <div className="inline-flex items-center gap-1">
               <Sparkles className="h-3.5 w-3.5 opacity-70" />
               Fast checkout via WA
