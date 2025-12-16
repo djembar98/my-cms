@@ -18,11 +18,9 @@ import {
   Trash2,
   RefreshCw,
   Plus,
-  MessageCircle,
   X,
 } from "lucide-react";
 
-/* ===================== TYPES ===================== */
 
 type ProductRow = {
   id: string;
@@ -54,6 +52,9 @@ type OfferRow = {
 
 const UNITS = [
   { value: "month", label: "month (bulan)" },
+  { value: "day", label: "day (hari)" }, 
+  { value: "year", label: "year (tahun)" }, 
+  { value: "lifetime", label: "lifetime" }, 
   { value: "robux", label: "robux" },
   { value: "uc", label: "uc" },
   { value: "page", label: "page" },
@@ -63,7 +64,6 @@ const UNITS = [
   { value: "item", label: "item (lainnya)" },
 ] as const;
 
-/* ===================== HELPERS ===================== */
 
 function cx(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
@@ -87,13 +87,6 @@ function formatIDR(n: number) {
   }
 }
 
-function waLink(waNumber: string, message: string) {
-  const phone = waNumber.replace(/[^\d]/g, "");
-  const text = encodeURIComponent(message);
-  return `https://wa.me/${phone}?text=${text}`;
-}
-
-/* ===================== UI ===================== */
 
 const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
@@ -187,11 +180,14 @@ const inputCls = cx(
 );
 
 const selectCls = cx(
-  "w-full rounded-2xl border bg-white/60 px-4 py-3 text-sm outline-none",
-  "border-slate-200/70 dark:bg-white/5 dark:border-white/10"
+  "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
+  "border-slate-200/70 bg-white/70 text-slate-900",
+  "focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
+  "dark:border-white/10 dark:bg-[#0f172a] dark:text-slate-100",
+  "dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15",
+  "dark:[&>option]:bg-[#0b1020] dark:[&>option]:text-slate-100"
 );
 
-/* ===================== PAGE ===================== */
 
 export default function JualanDetailPage({
   params,
@@ -469,7 +465,7 @@ export default function JualanDetailPage({
               </label>
 
               <label className="flex justify-between">
-                <span>Support device</span>
+                <span>Support All device</span> 
                 <input
                   type="checkbox"
                   checked={supportDevice}
