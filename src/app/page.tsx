@@ -16,9 +16,11 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 
-function cx(...cls: (string | false | null | undefined)[]) {
+function cx(...cls: (string | false |null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
 }
+
+/* ===================== TYPES ===================== */
 
 type ProductRow = {
   id: string;
@@ -30,11 +32,15 @@ type ProductRow = {
   wa_number: string;
   created_at: string;
 
-  // ✅ badge fields (biar tampil di buyer)
   promo: boolean;
   promo_text: string | null;
   garansi: boolean;
   support_device: boolean;
+
+  custom_badge_1: boolean;
+  custom_badge_1_text: string | null;
+  custom_badge_2: boolean;
+  custom_badge_2_text: string | null;
 };
 
 type OfferRow = {
@@ -54,6 +60,75 @@ type PostRow = {
   created_at: string;
 };
 
+function isObject(v: unknown): v is Record<string, any> {
+  return typeof v === "object" && v !== null;
+}
+
+function isProductRow(v: unknown): v is ProductRow {
+  if (!isObject(v)) return false;
+
+  // minimal required keys
+  return (
+    typeof v.id === "string" &&
+    typeof v.name === "string" &&
+    (typeof v.category === "string" ||
+      v.category === null ||
+      v.category === undefined) &&
+    typeof v.type === "string" &&
+    (typeof v.description === "string" ||
+      v.description === null ||
+      v.description === undefined) &&
+    (typeof v.image_url === "string" ||
+      v.image_url === null ||
+      v.image_url === undefined) &&
+    typeof v.wa_number === "string" &&
+    typeof v.created_at === "string" &&
+    typeof v.promo === "boolean" &&
+    (typeof v.promo_text === "string" ||
+      v.promo_text === null ||
+      v.promo_text === undefined) &&
+    typeof v.garansi === "boolean" &&
+    typeof v.support_device === "boolean" &&
+    typeof v.custom_badge_1 === "boolean" &&
+    (typeof v.custom_badge_1_text === "string" ||
+      v.custom_badge_1_text === null ||
+      v.custom_badge_1_text === undefined) &&
+    typeof v.custom_badge_2 === "boolean" &&
+    (typeof v.custom_badge_2_text === "string" ||
+      v.custom_badge_2_text === null ||
+      v.custom_badge_2_text === undefined)
+  );
+}
+
+function isOfferRow(v: unknown): v is OfferRow {
+  if (!isObject(v)) return false;
+  return (
+    typeof v.id === "string" &&
+    typeof v.product_id === "string" &&
+    typeof v.label === "string" &&
+    typeof v.unit === "string" &&
+    typeof v.qty === "number" &&
+    typeof v.price === "number"
+  );
+}
+
+function isPostRow(v: unknown): v is PostRow {
+  if (!isObject(v)) return false;
+  return (
+    typeof v.id === "string" &&
+    typeof v.title === "string" &&
+    (typeof v.content === "string" ||
+      v.content === null ||
+      v.content === undefined) &&
+    (typeof v.image_url === "string" ||
+      v.image_url === null ||
+      v.image_url === undefined) &&
+    typeof v.created_at === "string"
+  );
+}
+
+/* ===================== CONST ===================== */
+
 const CATEGORY_LABEL: Record<string, string> = {
   STREAMING: "Streaming",
   EDITING: "Editing",
@@ -63,6 +138,10 @@ const CATEGORY_LABEL: Record<string, string> = {
   JASA: "Jasa",
   OTHERS: "Others",
 };
+
+type ProductSort = "NEWEST" | "OLDEST" | "AZ" | "ZA";
+
+/* ===================== HELPERS ===================== */
 
 function formatRp(n: number) {
   try {
@@ -97,6 +176,28 @@ function capWords(s: string) {
     .map((w) => w.slice(0, 1).toUpperCase() + w.slice(1))
     .join(" ");
 }
+
+function buildBadges(p: ProductRow) {
+  const items: string[] = [];
+
+  if (p.promo) items.push(`✨ Promo${p.promo_text ? ` — ${p.promo_text}` : ""}`);
+  if (p.garansi) items.push("✅ Garansi");
+  if (p.support_device) items.push("📱 Support all device");
+
+  if (p.custom_badge_1) {
+    const t = (p.custom_badge_1_text || "").trim();
+    items.push(t ? `🏷️ ${t}` : "🏷️ Info");
+  }
+
+  if (p.custom_badge_2) {
+    const t = (p.custom_badge_2_text || "").trim();
+    items.push(t ? `🏷️ ${t}` : "🏷️ Info");
+  }
+
+  return items;
+}
+
+/* ===================== UI ===================== */
 
 function Pager({
   page,
@@ -152,17 +253,7 @@ function Pager({
   );
 }
 
-type ProductSort = "NEWEST" | "OLDEST" | "AZ" | "ZA";
-
-function buildBadges(p: ProductRow) {
-  const items: string[] = [];
-
-  if (p.promo) items.push(`✨ Promo${p.promo_text ? ` — ${p.promo_text}` : ""}`);
-  if (p.garansi) items.push("✅ Garansi");
-  if (p.support_device) items.push("📱 Support all device");
-
-  return items;
-}
+/* ===================== PAGE ===================== */
 
 export default function HomePage() {
   const supabase = createSupabaseBrowserClient();
@@ -174,8 +265,6 @@ export default function HomePage() {
 
   const [q, setQ] = useState("");
   const [activeCat, setActiveCat] = useState<string>("ALL");
-
-  // ✅ default: terbaru
   const [sortMode, setSortMode] = useState<ProductSort>("NEWEST");
 
   const PRODUCTS_PER_PAGE = 9;
@@ -187,35 +276,58 @@ export default function HomePage() {
   async function load() {
     setLoading(true);
 
+    // ✅ NOTE: select string ini harus match kolom di DB.
+    const selectCols = [
+      "id",
+      "name",
+      "category",
+      "type",
+      "description",
+      "image_url",
+      "wa_number",
+      "created_at",
+      "promo",
+      "promo_text",
+      "garansi",
+      "support_device",
+      "custom_badge_1",
+      "custom_badge_1_text",
+      "custom_badge_2",
+      "custom_badge_2_text",
+    ].join(",");
+
     const { data: p, error: pErr } = await supabase
       .from("products")
-      // ✅ ambil badge fields juga
-      .select(
-        "id,name,category,type,description,image_url,wa_number,created_at,promo,promo_text,garansi,support_device"
-      )
+      .select(selectCols as any) // ✅ fix TS GenericStringError typing
       .order("created_at", { ascending: false });
 
     if (pErr) {
       alert(pErr.message);
+      setProducts([]);
+      setOffers({});
+      setPosts([]);
       setLoading(false);
       return;
     }
 
-    const prod = (p ?? []) as ProductRow[];
-    setProducts(prod);
+    const rawProducts: unknown[] = Array.isArray(p) ? (p as unknown[]) : [];
+    const safeProducts: ProductRow[] = rawProducts.filter(isProductRow);
+    setProducts(safeProducts);
 
-    const ids = prod.map((x) => x.id);
+    const ids = safeProducts.map((x) => x.id);
     if (ids.length) {
       const { data: o, error: oErr } = await supabase
         .from("product_offers")
-        .select("id,product_id,label,unit,qty,price")
+        .select("id,product_id,label,unit,qty,price" as any)
         .in("product_id", ids)
         .order("created_at", { ascending: true });
 
       if (!oErr) {
+        const rawOffers: unknown[] = Array.isArray(o) ? (o as unknown[]) : [];
+        const safeOffers: OfferRow[] = rawOffers.filter(isOfferRow);
+
         const grouped: Record<string, OfferRow[]> = {};
-        (o ?? []).forEach((row) => {
-          const r = row as OfferRow;
+        safeOffers.forEach((r) => {
           grouped[r.product_id] ||= [];
           grouped[r.product_id].push(r);
         });
@@ -229,11 +341,17 @@ export default function HomePage() {
 
     const { data: ps, error: psErr } = await supabase
       .from("posts")
-      .select("id,title,content,image_url,created_at")
+      .select("id,title,content,image_url,created_at" as any)
       .order("created_at", { ascending: false })
       .limit(60);
 
-    if (!psErr) setPosts((ps ?? []) as PostRow[]);
+    if (!psErr) {
+      const rawPosts: unknown[] = Array.isArray(ps) ? (ps as unknown[]) : [];
+      setPosts(rawPosts.filter(isPostRow));
+    } else {
+      setPosts([]);
+    }
+
     setLoading(false);
   }
 
@@ -401,17 +519,9 @@ export default function HomePage() {
 
             <div className="mt-6 grid max-w-xl grid-cols-3 gap-3">
               {[
-                {
-                  icon: <ShoppingBag className="h-4 w-4" />,
-                  t: `${stats.products}`,
-                  s: "Produk",
-                },
+                { icon: <ShoppingBag className="h-4 w-4" />, t: `${stats.products}`, s: "Produk" },
                 { icon: <Filter className="h-4 w-4" />, t: `${stats.offers}`, s: "Paket" },
-                {
-                  icon: <Megaphone className="h-4 w-4" />,
-                  t: `${stats.posts}`,
-                  s: "Update",
-                },
+                { icon: <Megaphone className="h-4 w-4" />, t: `${stats.posts}`, s: "Update" },
               ].map((x) => (
                 <div
                   key={x.s}
@@ -524,16 +634,13 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ✅ sort bar */}
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
             Menampilkan <b>{filtered.length}</b> produk
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="text-xs text-slate-600/80 dark:text-slate-300/70">
-              Sort:
-            </div>
+            <div className="text-xs text-slate-600/80 dark:text-slate-300/70">Sort:</div>
 
             {[
               { v: "NEWEST" as const, label: "Terbaru" },
@@ -646,7 +753,6 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* ✅ badge info dari admin */}
                       {badges.length > 0 && (
                         <div className="mt-3 rounded-2xl border border-white/20 bg-white/35 p-3 text-sm text-slate-700/75 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
                           <ul className="space-y-1">
@@ -891,7 +997,7 @@ export default function HomePage() {
           </div>
 
           <div className="mt-8 flex flex-col gap-2 border-t border-white/20 pt-5 text-xs text-slate-600/70 dark:border-white/10 dark:text-slate-300/60 sm:flex-row sm:items-center sm:justify-between">
-            <div>© {new Date().getFullYear()} Djembaraa Web Dev All rights reserved.</div>
+            <div>© {new Date().getFullYear()} Djembar Arafat All rights reserved.</div>
             <div className="inline-flex items-center gap-1">
               <Sparkles className="h-3.5 w-3.5 opacity-70" />
               Fast checkout via WA
