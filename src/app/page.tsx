@@ -29,6 +29,12 @@ type ProductRow = {
   image_url: string | null;
   wa_number: string;
   created_at: string;
+
+  // ✅ badge fields (biar tampil di buyer)
+  promo: boolean;
+  promo_text: string | null;
+  garansi: boolean;
+  support_device: boolean;
 };
 
 type OfferRow = {
@@ -148,6 +154,16 @@ function Pager({
 
 type ProductSort = "NEWEST" | "OLDEST" | "AZ" | "ZA";
 
+function buildBadges(p: ProductRow) {
+  const items: string[] = [];
+
+  if (p.promo) items.push(`✨ Promo${p.promo_text ? ` — ${p.promo_text}` : ""}`);
+  if (p.garansi) items.push("✅ Garansi");
+  if (p.support_device) items.push("📱 Support all device");
+
+  return items;
+}
+
 export default function HomePage() {
   const supabase = createSupabaseBrowserClient();
 
@@ -173,7 +189,10 @@ export default function HomePage() {
 
     const { data: p, error: pErr } = await supabase
       .from("products")
-      .select("id,name,category,type,description,image_url,wa_number,created_at")
+      // ✅ ambil badge fields juga
+      .select(
+        "id,name,category,type,description,image_url,wa_number,created_at,promo,promo_text,garansi,support_device"
+      )
       .order("created_at", { ascending: false });
 
     if (pErr) {
@@ -382,9 +401,17 @@ export default function HomePage() {
 
             <div className="mt-6 grid max-w-xl grid-cols-3 gap-3">
               {[
-                { icon: <ShoppingBag className="h-4 w-4" />, t: `${stats.products}`, s: "Produk" },
+                {
+                  icon: <ShoppingBag className="h-4 w-4" />,
+                  t: `${stats.products}`,
+                  s: "Produk",
+                },
                 { icon: <Filter className="h-4 w-4" />, t: `${stats.offers}`, s: "Paket" },
-                { icon: <Megaphone className="h-4 w-4" />, t: `${stats.posts}`, s: "Update" },
+                {
+                  icon: <Megaphone className="h-4 w-4" />,
+                  t: `${stats.posts}`,
+                  s: "Update",
+                },
               ].map((x) => (
                 <div
                   key={x.s}
@@ -562,6 +589,8 @@ export default function HomePage() {
                   )}). Bisa cek stok?`;
                   const hrefWA = waLink(p.wa_number, msg);
 
+                  const badges = buildBadges(p);
+
                   return (
                     <div
                       key={p.id}
@@ -616,6 +645,19 @@ export default function HomePage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* ✅ badge info dari admin */}
+                      {badges.length > 0 && (
+                        <div className="mt-3 rounded-2xl border border-white/20 bg-white/35 p-3 text-sm text-slate-700/75 backdrop-blur-xl dark:border-white/10 dark:bg-white/5 dark:text-slate-300/70">
+                          <ul className="space-y-1">
+                            {badges.map((t, i) => (
+                              <li key={i} className="leading-relaxed">
+                                {t}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
                       {p.description && (
                         <p className="mt-3 line-clamp-2 text-sm text-slate-700/75 dark:text-slate-300/70">
