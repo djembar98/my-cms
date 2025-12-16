@@ -21,6 +21,7 @@ import {
   X,
 } from "lucide-react";
 
+/* ===================== TYPES ===================== */
 
 type ProductRow = {
   id: string;
@@ -38,6 +39,12 @@ type ProductRow = {
   promo_text: string | null;
   garansi: boolean;
   support_device: boolean;
+
+  // ✅ custom badges (NEW)
+  custom_badge_1: boolean;
+  custom_badge_1_text: string | null;
+  custom_badge_2: boolean;
+  custom_badge_2_text: string | null;
 };
 
 type OfferRow = {
@@ -52,9 +59,9 @@ type OfferRow = {
 
 const UNITS = [
   { value: "month", label: "month (bulan)" },
-  { value: "day", label: "day (hari)" }, 
-  { value: "year", label: "year (tahun)" }, 
-  { value: "lifetime", label: "lifetime" }, 
+  { value: "day", label: "day (hari)" },
+  { value: "year", label: "year (tahun)" },
+  { value: "lifetime", label: "lifetime" },
   { value: "robux", label: "robux" },
   { value: "uc", label: "uc" },
   { value: "page", label: "page" },
@@ -64,6 +71,7 @@ const UNITS = [
   { value: "item", label: "item (lainnya)" },
 ] as const;
 
+/* ===================== HELPERS ===================== */
 
 function cx(...cls: (string | false | null | undefined)[]) {
   return cls.filter(Boolean).join(" ");
@@ -87,6 +95,7 @@ function formatIDR(n: number) {
   }
 }
 
+/* ===================== UI ===================== */
 
 const subtleText = "text-slate-600/80 dark:text-slate-300/70";
 
@@ -179,15 +188,17 @@ const inputCls = cx(
   "dark:bg-white/5 dark:border-white/10 dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15"
 );
 
+// ✅ dibuat lebih kelihatan (terutama dark mode)
 const selectCls = cx(
   "w-full rounded-2xl border px-4 py-3 text-sm outline-none transition",
-  "border-slate-200/70 bg-white/70 text-slate-900",
+  "border-slate-200/70 bg-white/80 text-slate-900",
   "focus:border-indigo-400/60 focus:ring-4 focus:ring-indigo-400/15",
   "dark:border-white/10 dark:bg-[#0f172a] dark:text-slate-100",
   "dark:focus:border-sky-400/50 dark:focus:ring-sky-400/15",
   "dark:[&>option]:bg-[#0b1020] dark:[&>option]:text-slate-100"
 );
 
+/* ===================== PAGE ===================== */
 
 export default function JualanDetailPage({
   params,
@@ -223,6 +234,12 @@ export default function JualanDetailPage({
   const [promo, setPromo] = useState(false);
   const [promoText, setPromoText] = useState("");
 
+  // ✅ custom badges states
+  const [custom1, setCustom1] = useState(false);
+  const [custom1Text, setCustom1Text] = useState("");
+  const [custom2, setCustom2] = useState(false);
+  const [custom2Text, setCustom2Text] = useState("");
+
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -240,22 +257,55 @@ export default function JualanDetailPage({
   );
 
   async function loadAll() {
+    setRefreshing(true);
     setLoading(true);
 
-    const { data: p, error } = await supabase
-      .from("products")
-      .select(
-        "id,name,category,type,description,image_url,image_public_id,wa_number,created_at,promo,promo_text,garansi,support_device"
-      )
-      .eq("id", productId)
-      .maybeSingle();
+    const sel = [
+      "id",
+      "name",
+      "category",
+      "type",
+      "description",
+      "image_url",
+      "image_public_id",
+      "wa_number",
+      "created_at",
+      "promo",
+      "promo_text",
+      "garansi",
+      "support_device",
+      "custom_badge_1",
+      "custom_badge_1_text",
+      "custom_badge_2",
+      "custom_badge_2_text",
+    ].join(",");
 
-    if (error || !p) {
+    const { data, error } = await supabase
+      .from("products")
+      .select(sel)
+      .eq("id", productId)
+      .maybeSingle()
+      .returns<ProductRow>();
+
+    if (error) {
+      console.error(error);
+      alert(error.message);
+      setProduct(null);
+      setOffers([]);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
-    const prod = p as ProductRow;
+    if (!data) {
+      setProduct(null);
+      setOffers([]);
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
+
+    const prod = data;
     setProduct(prod);
 
     setName(prod.name ?? "");
@@ -274,14 +324,26 @@ export default function JualanDetailPage({
     setPromo(!!prod.promo);
     setPromoText(prod.promo_text ?? "");
 
-    const { data: o } = await supabase
+    setCustom1(!!prod.custom_badge_1);
+    setCustom1Text(prod.custom_badge_1_text ?? "");
+    setCustom2(!!prod.custom_badge_2);
+    setCustom2Text(prod.custom_badge_2_text ?? "");
+
+    const { data: o, error: oErr } = await supabase
       .from("product_offers")
       .select("id,product_id,label,unit,qty,price,created_at")
       .eq("product_id", productId)
       .order("created_at");
 
-    setOffers((o ?? []) as OfferRow[]);
+    if (oErr) {
+      console.error(oErr);
+      setOffers([]);
+    } else {
+      setOffers((o ?? []) as OfferRow[]);
+    }
+
     setLoading(false);
+    setRefreshing(false);
   }
 
   useEffect(() => {
@@ -306,6 +368,12 @@ export default function JualanDetailPage({
       support_device: supportDevice,
       promo,
       promo_text: promo ? promoText.trim() || null : null,
+
+      // ✅ custom badges saved
+      custom_badge_1: custom1,
+      custom_badge_1_text: custom1 ? custom1Text.trim() || null : null,
+      custom_badge_2: custom2,
+      custom_badge_2_text: custom2 ? custom2Text.trim() || null : null,
     };
 
     const { error } = await supabase
@@ -317,6 +385,8 @@ export default function JualanDetailPage({
     if (!error) {
       setEditMode(false);
       loadAll();
+    } else {
+      alert(error.message);
     }
   }
 
@@ -454,9 +524,11 @@ export default function JualanDetailPage({
 
           {/* BADGE */}
           {editMode && (
-            <div className="space-y-2">
-              <label className="flex justify-between">
-                <span>Garansi</span>
+            <div className="space-y-3 rounded-3xl border border-white/20 bg-white/40 p-4 dark:border-white/10 dark:bg-white/5">
+              <div className="text-sm font-semibold">Badges</div>
+
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">Garansi</span>
                 <input
                   type="checkbox"
                   checked={garansi}
@@ -464,8 +536,8 @@ export default function JualanDetailPage({
                 />
               </label>
 
-              <label className="flex justify-between">
-                <span>Support All device</span> 
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">Support all device</span>
                 <input
                   type="checkbox"
                   checked={supportDevice}
@@ -473,8 +545,8 @@ export default function JualanDetailPage({
                 />
               </label>
 
-              <label className="flex justify-between">
-                <span>Promo</span>
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">Promo</span>
                 <input
                   type="checkbox"
                   checked={promo}
@@ -490,6 +562,42 @@ export default function JualanDetailPage({
                   onChange={(e) => setPromoText(e.target.value)}
                 />
               )}
+
+              {/* ✅ Custom badge 1 */}
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">Custom badge 1</span>
+                <input
+                  type="checkbox"
+                  checked={custom1}
+                  onChange={(e) => setCustom1(e.target.checked)}
+                />
+              </label>
+              {custom1 && (
+                <input
+                  className={inputCls}
+                  placeholder="Teks custom badge 1 (contoh: Best Seller)"
+                  value={custom1Text}
+                  onChange={(e) => setCustom1Text(e.target.value)}
+                />
+              )}
+
+              {/* ✅ Custom badge 2 */}
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">Custom badge 2</span>
+                <input
+                  type="checkbox"
+                  checked={custom2}
+                  onChange={(e) => setCustom2(e.target.checked)}
+                />
+              </label>
+              {custom2 && (
+                <input
+                  className={inputCls}
+                  placeholder="Teks custom badge 2 (contoh: Ready Stock)"
+                  value={custom2Text}
+                  onChange={(e) => setCustom2Text(e.target.value)}
+                />
+              )}
             </div>
           )}
 
@@ -503,7 +611,7 @@ export default function JualanDetailPage({
 
           {editMode && (
             <PrimaryBtn onClick={saveProduct} disabled={saving}>
-              <Save className="h-4 w-4" /> Simpan
+              <Save className="h-4 w-4" /> {saving ? "Menyimpan..." : "Simpan"}
             </PrimaryBtn>
           )}
         </GlassCard>
@@ -535,6 +643,7 @@ export default function JualanDetailPage({
                 className={inputCls}
                 value={oQtyText}
                 onChange={(e) => setOQtyText(normalizeNumberText(e.target.value))}
+                placeholder="Qty"
               />
 
               <input
@@ -543,11 +652,13 @@ export default function JualanDetailPage({
                 onChange={(e) =>
                   setOPriceText(normalizeNumberText(e.target.value))
                 }
+                placeholder="Harga"
               />
             </div>
 
             <PrimaryBtn type="submit" disabled={offerBusy}>
-              <Plus className="h-4 w-4" /> Tambah Paket
+              <Plus className="h-4 w-4" />{" "}
+              {offerBusy ? "Menambah..." : "Tambah Paket"}
             </PrimaryBtn>
           </form>
 
@@ -555,11 +666,11 @@ export default function JualanDetailPage({
             {offers.map((o) => (
               <div
                 key={o.id}
-                className="flex justify-between rounded-2xl border p-3"
+                className="flex justify-between rounded-2xl border border-white/20 bg-white/40 p-3 dark:border-white/10 dark:bg-white/5"
               >
                 <div>
                   <div className="font-medium">{o.label}</div>
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-slate-600/80 dark:text-slate-300/70">
                     {o.qty} {o.unit} • Rp {formatIDR(o.price)}
                   </div>
                 </div>
